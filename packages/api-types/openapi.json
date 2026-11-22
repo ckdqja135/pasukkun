@@ -1,0 +1,5527 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/technologies": {
+      "get": {
+        "operationId": "CatalogController_technologies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TechnologyDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/me/interests": {
+      "get": {
+        "operationId": "CatalogController_interests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterestsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "계정에 저장된 관심 기술. 화면의 임시 필터와는 별개다.",
+        "tags": [
+          "catalog"
+        ]
+      },
+      "put": {
+        "operationId": "CatalogController_setInterests",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetInterestsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterestsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/auth/status": {
+      "get": {
+        "operationId": "AuthController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/me/settings": {
+      "get": {
+        "operationId": "AuthController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      },
+      "patch": {
+        "operationId": "AuthController_updateSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/vulnerabilities": {
+      "get": {
+        "operationId": "VulnerabilityController_list",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "식별자·패키지명·제목 검색",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "technologyIds",
+            "required": false,
+            "in": "query",
+            "description": "기술 ID 목록(쉼표 구분). 같은 그룹은 OR, 그룹 사이는 groupMode 를 따른다. 비우면 수집된 전체.",
+            "schema": {
+              "maxItems": 100,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "groupMode",
+            "required": false,
+            "in": "query",
+            "description": "ALL_GROUPS: 그룹 간 AND (기본) / ANY_GROUP: 그룹 간 OR",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL_GROUPS",
+                "ANY_GROUP"
+              ]
+            }
+          },
+          {
+            "name": "unclassifiedOnly",
+            "required": false,
+            "in": "query",
+            "description": "기술 카탈로그에 매핑되지 않은 항목만",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "severities",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "CRITICAL",
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW",
+                  "UNKNOWN"
+                ]
+              }
+            }
+          },
+          {
+            "name": "kev",
+            "required": false,
+            "in": "query",
+            "description": "true: KEV 등재만 / false: 미등재만 (미등재가 악용 없음을 뜻하지는 않는다)",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "patchAvailable",
+            "required": false,
+            "in": "query",
+            "description": "true: 수정 버전 확인됨 / false: 패치 미확인",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "publishedFrom",
+            "required": false,
+            "in": "query",
+            "description": "ISO 날짜. 공개일 범위",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "publishedTo",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "modifiedFrom",
+            "required": false,
+            "in": "query",
+            "description": "ISO 날짜. 최근 수정일 범위",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "modifiedTo",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeWithdrawn",
+            "required": false,
+            "in": "query",
+            "description": "철회된 공지 포함 여부 (기본 false)",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "description": "내 프로젝트 ID. 지정하면 각 항목에 이 프로젝트와의 관련 상태를 붙인다.",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectMatch",
+            "required": false,
+            "in": "query",
+            "description": "프로젝트별 버전 매칭 결과 필터 (projectId 필요)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "AFFECTED",
+                  "NOT_AFFECTED",
+                  "UNKNOWN",
+                  "NOT_SCANNED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "remediationStatuses",
+            "required": false,
+            "in": "query",
+            "description": "조치 상태 필터 (projectId 필요)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "UNREVIEWED",
+                  "IN_REVIEW",
+                  "PLANNED",
+                  "RISK_ACCEPTED",
+                  "DONE"
+                ]
+              }
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "modified",
+                "severity",
+                "epss"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VulnerabilityListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "취약점 피드. 필터를 주지 않으면 서비스가 수집한 전체 범위를 보여준다.",
+        "tags": [
+          "vulnerabilities"
+        ]
+      }
+    },
+    "/api/v1/vulnerabilities/{id}": {
+      "get": {
+        "operationId": "VulnerabilityController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VulnerabilityDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "vulnerabilities"
+        ]
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "ProjectController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "operationId": "ProjectController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}": {
+      "get": {
+        "operationId": "ProjectController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      },
+      "patch": {
+        "operationId": "ProjectController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      },
+      "delete": {
+        "operationId": "ProjectController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/snapshots/validate": {
+      "post": {
+        "operationId": "ProjectController_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotPreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "업로드 내용을 저장하지 않고 검증만 한다.",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/snapshots": {
+      "post": {
+        "operationId": "ProjectController_createSnapshot",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotCreatedDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "구성 스냅샷을 만들고 검사를 시작한다.",
+        "tags": [
+          "projects"
+        ]
+      },
+      "get": {
+        "operationId": "ProjectController_snapshots",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SnapshotDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/snapshots/{id}/packages": {
+      "get": {
+        "operationId": "ProjectController_snapshotPackages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "filter",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "unsupported",
+                "direct",
+                "dev"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotPackageListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/scans": {
+      "post": {
+        "operationId": "ProjectController_requestScan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "현재 구성으로 검사를 요청한다. 작업 ID 를 돌려주며 진행 상태는 GET /scans/:id 로 조회한다.",
+        "tags": [
+          "projects"
+        ]
+      },
+      "get": {
+        "operationId": "ProjectController_scans",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScanSummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/scans/{id}": {
+      "get": {
+        "operationId": "ProjectController_scan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/findings": {
+      "get": {
+        "operationId": "FindingController_list",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionMatch",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "AFFECTED",
+                  "NOT_AFFECTED",
+                  "UNKNOWN"
+                ]
+              }
+            }
+          },
+          {
+            "name": "priorities",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "URGENT",
+                  "HIGH",
+                  "NEEDS_CHECK",
+                  "MEDIUM",
+                  "LOW"
+                ]
+              }
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "UNREVIEWED",
+                  "IN_REVIEW",
+                  "PLANNED",
+                  "RISK_ACCEPTED",
+                  "DONE"
+                ]
+              }
+            }
+          },
+          {
+            "name": "exploitConditions",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "MET",
+                  "NOT_MET",
+                  "NEEDS_CHECK",
+                  "NOT_ANALYZED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "needsRecheck",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "reviewOverdue",
+            "required": false,
+            "in": "query",
+            "description": "위험 수용 재검토 기한이 지난 항목만",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeResolved",
+            "required": false,
+            "in": "query",
+            "description": "현재 구성에서 더 이상 검출되지 않는 항목 포함 (기본 false)",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "패키지명·식별자·제목 검색",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "priority",
+                "analyzed",
+                "severity"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "프로젝트별 분석 결과. projectId 를 주지 않으면 내 모든 프로젝트가 대상이다.",
+        "tags": [
+          "findings"
+        ]
+      }
+    },
+    "/api/v1/findings/{id}": {
+      "get": {
+        "operationId": "FindingController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "findings"
+        ]
+      }
+    },
+    "/api/v1/findings/{id}/reviews": {
+      "post": {
+        "operationId": "FindingController_addReview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "수동 악용 조건 검토를 기록한다 (추가 전용).",
+        "tags": [
+          "findings"
+        ]
+      }
+    },
+    "/api/v1/findings/{id}/status": {
+      "patch": {
+        "operationId": "FindingController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "findings"
+        ]
+      }
+    },
+    "/api/v1/channels/providers": {
+      "get": {
+        "operationId": "NotificationController_providers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelProvidersDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "이 서버에 설정된 서비스 봇",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels": {
+      "get": {
+        "operationId": "NotificationController_listChannels",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChannelDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/{id}": {
+      "patch": {
+        "operationId": "NotificationController_renameChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChannelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationController_removeChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/{id}/test": {
+      "post": {
+        "operationId": "NotificationController_testChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelTestResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "테스트 메시지를 한 건 보낸다.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/{id}/pause": {
+      "post": {
+        "operationId": "NotificationController_pauseChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/{id}/resume": {
+      "post": {
+        "operationId": "NotificationController_resumeChannel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/telegram/link": {
+      "post": {
+        "operationId": "NotificationController_startTelegram",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelLinkInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "텔레그램 연결 시작: 서비스 봇과의 대화를 여는 링크를 만든다 (15분 유효).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/discord/link": {
+      "post": {
+        "operationId": "NotificationController_startDiscord",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelLinkInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscordLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "디스코드 연결 시작: 봇을 넣을 서버를 고르는 디스코드 화면 주소를 만든다 (15분 유효).",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/links/{id}": {
+      "get": {
+        "operationId": "NotificationController_linkStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelLinkStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/links/{id}/discord-channels": {
+      "get": {
+        "operationId": "NotificationController_discordChannels",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscordChannelOptionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "디스코드: 봇을 넣은 서버에서 알림 받을 수 있는 채널 목록",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/channels/links/{id}/discord-complete": {
+      "post": {
+        "operationId": "NotificationController_completeDiscord",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteDiscordLinkDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "디스코드: 채널을 골라 연결을 끝낸다 (그 채널로 확인 메시지를 보낸다)",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/rules/template-info": {
+      "get": {
+        "operationId": "NotificationController_templateInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateInfoDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "쓸 수 있는 자리표시자와 기본 틀",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/rules/template-preview": {
+      "post": {
+        "operationId": "NotificationController_previewTemplate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplatePreviewInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplatePreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/rules": {
+      "get": {
+        "operationId": "NotificationController_listRules",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      },
+      "post": {
+        "operationId": "NotificationController_createRule",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/rules/{id}": {
+      "put": {
+        "operationId": "NotificationController_updateRule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationController_removeRule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/deliveries": {
+      "get": {
+        "operationId": "NotificationController_listDeliveries",
+        "parameters": [
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "SENDING",
+                  "SENT",
+                  "RETRYING",
+                  "FAILED",
+                  "SUPPRESSED",
+                  "HELD",
+                  "DIGEST_PENDING",
+                  "DIGESTED",
+                  "CANCELLED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "channelId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/deliveries/{id}": {
+      "get": {
+        "operationId": "NotificationController_getDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/github/status": {
+      "get": {
+        "operationId": "GithubController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/github/link": {
+      "post": {
+        "operationId": "GithubController_start",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubLinkStartDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "저장소 가져오기 시작. 돌려받은 주소로 이동하면 GitHub 에서 인증한다.",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/github/links/{id}": {
+      "get": {
+        "operationId": "GithubController_link",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubLinkDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/github/links/{id}/inspect": {
+      "post": {
+        "operationId": "GithubController_inspect",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GithubInspectInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubInspectDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "고른 저장소에서 lockfile 위치를 찾는다.",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/github/links/{id}/import": {
+      "post": {
+        "operationId": "GithubController_import",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GithubImportInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GithubImportResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "고른 lockfile 마다 프로젝트를 만들고 가져오기·검사를 시작한다.",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/github/sync": {
+      "post": {
+        "operationId": "GithubController_sync",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "[지금 확인]: lockfile 이 바뀌었는지 바로 확인한다.",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/projects/{id}/github": {
+      "delete": {
+        "operationId": "GithubController_disconnect",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "연결 해제. 프로젝트와 지금까지의 결과는 남는다.",
+        "tags": [
+          "github"
+        ]
+      }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "operationId": "StatusController_dashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "status"
+        ]
+      }
+    },
+    "/api/v1/status/ingestion": {
+      "get": {
+        "operationId": "StatusController_ingestion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionStatusDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "데이터 소스별 수집 상태: 마지막 성공 시각, 실패, 지연 여부",
+        "tags": [
+          "status"
+        ]
+      }
+    },
+    "/api/v1/priority-rules": {
+      "get": {
+        "operationId": "StatusController_priorityRules",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriorityRulesDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "대응 우선순위 규칙과 임계값",
+        "tags": [
+          "status"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "pasukkun API",
+    "description": "취약점 모니터링 및 프로젝트 영향도 분석 API. 인증은 세션 쿠키, 상태 변경 요청에는 X-CSRF-Token 헤더가 필요합니다.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "psk_session"
+      }
+    },
+    "schemas": {
+      "TechnologyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "LANGUAGE",
+              "FRAMEWORK",
+              "RUNTIME",
+              "INFRA",
+              "DATABASE"
+            ]
+          },
+          "scanSupport": {
+            "type": "string",
+            "description": "PRECISE: 설치 버전 정밀 검사 지원 / FEED_ONLY: 피드 관련성 표시만",
+            "enum": [
+              "PRECISE",
+              "FEED_ONLY"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "group",
+          "scanSupport"
+        ]
+      },
+      "InterestsDto": {
+        "type": "object",
+        "properties": {
+          "technologyIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "technologyIds"
+        ]
+      },
+      "SetInterestsDto": {
+        "type": "object",
+        "properties": {
+          "technologyIds": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "technologyIds"
+        ]
+      },
+      "AuthStatusDto": {
+        "type": "object",
+        "properties": {
+          "githubEnabled": {
+            "type": "boolean",
+            "description": "GitHub 로그인이 설정되어 있는지 (Client ID / Secret)"
+          }
+        },
+        "required": [
+          "githubEnabled"
+        ]
+      },
+      "OkDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "UserSettingsDto": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "description": "IANA 시간대 (예: Asia/Seoul)"
+          },
+          "interestMatchMode": {
+            "description": "저장된 관심 기술의 그룹 간 결합 방식",
+            "enum": [
+              "ALL_GROUPS",
+              "ANY_GROUP"
+            ],
+            "type": "string"
+          },
+          "quietHoursEnabled": {
+            "type": "boolean"
+          },
+          "quietStartMinute": {
+            "type": "number",
+            "description": "자정 기준 분 (0-1439)"
+          },
+          "quietEndMinute": {
+            "type": "number"
+          },
+          "urgentBypassQuiet": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "timezone",
+          "interestMatchMode",
+          "quietHoursEnabled",
+          "quietStartMinute",
+          "quietEndMinute",
+          "urgentBypassQuiet"
+        ]
+      },
+      "MeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "githubLogin": {
+            "type": "string",
+            "description": "GitHub 아이디"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "GitHub 프로필 이름 (없을 수 있음)"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "상태 변경 요청의 X-CSRF-Token 헤더에 넣는 값"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/UserSettingsDto"
+          }
+        },
+        "required": [
+          "id",
+          "githubLogin",
+          "name",
+          "csrfToken",
+          "settings"
+        ]
+      },
+      "UpdateSettingsDto": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "interestMatchMode": {
+            "type": "string",
+            "enum": [
+              "ALL_GROUPS",
+              "ANY_GROUP"
+            ]
+          },
+          "quietHoursEnabled": {
+            "type": "boolean"
+          },
+          "quietStartMinute": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1439
+          },
+          "quietEndMinute": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1439
+          },
+          "urgentBypassQuiet": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TechTagDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "description": "태깅 근거: PACKAGE(패키지명) / CPE(제품) / ECOSYSTEM(생태계)",
+            "enum": [
+              "ECOSYSTEM",
+              "PACKAGE",
+              "CPE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "group",
+          "basis"
+        ]
+      },
+      "ProjectRelationDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "AFFECTED: 영향 버전 일치 / NOT_AFFECTED: 확인된 영향 범위에 미포함 / UNKNOWN: 판단 불가 / NOT_SCANNED: 검사 대상 아님",
+            "enum": [
+              "UNKNOWN",
+              "AFFECTED",
+              "NOT_AFFECTED",
+              "NOT_SCANNED"
+            ]
+          },
+          "findingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "priority": {
+            "type": "string",
+            "nullable": true,
+            "description": "가장 높은 대응 우선순위"
+          },
+          "remediationStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "state",
+          "findingIds",
+          "priority",
+          "remediationStatuses"
+        ]
+      },
+      "VulnerabilityListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ]
+          },
+          "cvssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "cvssVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "modifiedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "withdrawn": {
+            "type": "boolean"
+          },
+          "kevAddedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "epssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "epssPercentile": {
+            "type": "number",
+            "nullable": true
+          },
+          "epssDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "patchStatus": {
+            "type": "string",
+            "enum": [
+              "UNCONFIRMED",
+              "AVAILABLE"
+            ]
+          },
+          "classified": {
+            "type": "boolean"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TechTagDto"
+            }
+          },
+          "packages": {
+            "description": "영향 패키지 (최대 5개 표시용)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "packageCount": {
+            "type": "number"
+          },
+          "projectRelation": {
+            "nullable": true,
+            "description": "projectId 를 지정했을 때만 채워진다",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProjectRelationDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "identifiers",
+          "severity",
+          "cvssScore",
+          "cvssVersion",
+          "publishedAt",
+          "modifiedAt",
+          "withdrawn",
+          "kevAddedAt",
+          "epssScore",
+          "epssPercentile",
+          "epssDate",
+          "patchStatus",
+          "classified",
+          "technologies",
+          "packages",
+          "packageCount",
+          "projectRelation"
+        ]
+      },
+      "VulnerabilityListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VulnerabilityListItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "CvssDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "vector": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "source",
+          "version",
+          "vector",
+          "score"
+        ]
+      },
+      "AffectedPackageDto": {
+        "type": "object",
+        "properties": {
+          "ecosystem": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "description": "범위를 제공한 출처"
+          },
+          "sourceWithdrawn": {
+            "type": "boolean"
+          },
+          "ranges": {
+            "description": "사람이 읽는 범위 표현",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fixedVersions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unparsed": {
+            "description": "해석하지 못한 범위 표현",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ecosystem",
+          "name",
+          "source",
+          "sourceWithdrawn",
+          "ranges",
+          "versions",
+          "fixedVersions",
+          "unparsed"
+        ]
+      },
+      "SourceInfoDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "severityLabel": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "modifiedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "withdrawn": {
+            "type": "boolean"
+          },
+          "fetchedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "sourceId",
+          "url",
+          "title",
+          "severityLabel",
+          "publishedAt",
+          "modifiedAt",
+          "withdrawn",
+          "fetchedAt"
+        ]
+      },
+      "ReferenceDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "type"
+        ]
+      },
+      "KevInfoDto": {
+        "type": "object",
+        "properties": {
+          "dateAdded": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "ransomwareUse": {
+            "type": "string",
+            "nullable": true
+          },
+          "requiredAction": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "dateAdded",
+          "dueDate",
+          "ransomwareUse",
+          "requiredAction"
+        ]
+      },
+      "RelatedFindingDto": {
+        "type": "object",
+        "properties": {
+          "findingId": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "versionMatch": {
+            "type": "string"
+          },
+          "exploitCondition": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "remediationStatus": {
+            "type": "string"
+          },
+          "fixedVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "needsRecheck": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "analyzedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "findingId",
+          "projectId",
+          "projectName",
+          "packageName",
+          "version",
+          "versionMatch",
+          "exploitCondition",
+          "priority",
+          "remediationStatus",
+          "fixedVersion",
+          "needsRecheck",
+          "resolvedAt",
+          "analyzedAt"
+        ]
+      },
+      "UnscannedProjectNoteDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "description": "왜 자동 판정하지 않았는지"
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "note"
+        ]
+      },
+      "VulnerabilityDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "severity": {
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "cvssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "cvssVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "modifiedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "withdrawn": {
+            "type": "boolean"
+          },
+          "kevAddedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "epssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "epssPercentile": {
+            "type": "number",
+            "nullable": true
+          },
+          "epssDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "patchStatus": {
+            "enum": [
+              "UNCONFIRMED",
+              "AVAILABLE"
+            ],
+            "type": "string"
+          },
+          "classified": {
+            "type": "boolean"
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TechTagDto"
+            }
+          },
+          "packages": {
+            "description": "영향 패키지 (최대 5개 표시용)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "packageCount": {
+            "type": "number"
+          },
+          "projectRelation": {
+            "nullable": true,
+            "description": "projectId 를 지정했을 때만 채워진다",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProjectRelationDto"
+              }
+            ]
+          },
+          "details": {
+            "type": "string",
+            "description": "외부 공지 원문(Markdown). 화면에서는 원시 HTML 을 렌더링하지 않는다."
+          },
+          "cvssVector": {
+            "type": "string",
+            "nullable": true
+          },
+          "cvssSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "cvss": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CvssDto"
+            }
+          },
+          "affected": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AffectedPackageDto"
+            }
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceInfoDto"
+            }
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceDto"
+            }
+          },
+          "kev": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KevInfoDto"
+              }
+            ]
+          },
+          "conflicts": {
+            "description": "출처 간 불일치 등 주의할 점",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relatedFindings": {
+            "description": "내 프로젝트에서 확인된 사실",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RelatedFindingDto"
+            }
+          },
+          "manualReviewProjects": {
+            "description": "관련 기술을 쓰지만 자동 판정 범위 밖인 내 프로젝트",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnscannedProjectNoteDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "identifiers",
+          "severity",
+          "cvssScore",
+          "cvssVersion",
+          "publishedAt",
+          "modifiedAt",
+          "withdrawn",
+          "kevAddedAt",
+          "epssScore",
+          "epssPercentile",
+          "epssDate",
+          "patchStatus",
+          "classified",
+          "technologies",
+          "packages",
+          "packageCount",
+          "projectRelation",
+          "details",
+          "cvssVector",
+          "cvssSource",
+          "cvss",
+          "affected",
+          "products",
+          "sources",
+          "references",
+          "kev",
+          "conflicts",
+          "relatedFindings",
+          "manualReviewProjects"
+        ]
+      },
+      "SnapshotDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "number"
+          },
+          "inputType": {
+            "enum": [
+              "LOCKFILE",
+              "MANUAL"
+            ],
+            "type": "string"
+          },
+          "source": {
+            "description": "UPLOAD(화면에서 올림) / GITHUB(저장소에서 자동으로 가져옴)",
+            "enum": [
+              "UPLOAD",
+              "GITHUB"
+            ],
+            "type": "string"
+          },
+          "lockfileFormat": {
+            "nullable": true,
+            "enum": [
+              "NPM",
+              "PNPM",
+              "YARN"
+            ],
+            "type": "string"
+          },
+          "sourceRef": {
+            "type": "string",
+            "nullable": true,
+            "description": "GitHub 에서 가져온 시점의 커밋"
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileSha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "lockfileVersion": {
+            "type": "number",
+            "nullable": true
+          },
+          "packageCount": {
+            "type": "number"
+          },
+          "scannableCount": {
+            "type": "number"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "projectConfig": {
+            "type": "object",
+            "description": "스냅샷 시점의 프로젝트 구성 사본"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "inputType",
+          "source",
+          "lockfileFormat",
+          "sourceRef",
+          "fileName",
+          "fileSha256",
+          "lockfileVersion",
+          "packageCount",
+          "scannableCount",
+          "isCurrent",
+          "warnings",
+          "projectConfig",
+          "createdAt"
+        ]
+      },
+      "ScanSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "snapshotId": {
+            "type": "string"
+          },
+          "snapshotSeq": {
+            "type": "number"
+          },
+          "trigger": {
+            "enum": [
+              "MANUAL",
+              "SNAPSHOT_CREATED",
+              "SCHEDULED"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "description": "PARTIAL: 일부 조회 실패 - 결과에 없는 항목을 \"일치 없음\"으로 해석하면 안 된다",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "PARTIAL"
+            ],
+            "type": "string"
+          },
+          "isInitial": {
+            "type": "boolean"
+          },
+          "packagesTotal": {
+            "type": "number"
+          },
+          "packagesScanned": {
+            "type": "number"
+          },
+          "scope": {
+            "type": "object",
+            "description": "검사 범위와 제외 항목"
+          },
+          "sourceFreshness": {
+            "type": "object",
+            "description": "검사 시점의 소스별 수집 상태"
+          },
+          "summary": {
+            "type": "object"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "snapshotId",
+          "snapshotSeq",
+          "trigger",
+          "status",
+          "isInitial",
+          "packagesTotal",
+          "packagesScanned",
+          "scope",
+          "sourceFreshness",
+          "summary",
+          "error",
+          "createdAt",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
+      "ProjectCountsDto": {
+        "type": "object",
+        "properties": {
+          "affected": {
+            "type": "number",
+            "description": "영향 버전 일치 (현재 구성 기준, 미해소)"
+          },
+          "unknown": {
+            "type": "number",
+            "description": "판단 불가"
+          },
+          "urgent": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number",
+            "description": "미조치: 미검토·검토 중·조치 예정"
+          },
+          "needsRecheck": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "affected",
+          "unknown",
+          "urgent",
+          "high",
+          "open",
+          "needsRecheck"
+        ]
+      },
+      "ProjectGithubDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "lockfilePath": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "OK / ERROR(이번 확인 실패, 다음에 다시 시도) / DISCONNECTED(앱 설치 해제 등으로 접근 불가)",
+            "enum": [
+              "OK",
+              "ERROR",
+              "DISCONNECTED"
+            ]
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastCheckedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastChangedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "commitSha": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "description": "저장소 안의 lockfile 주소"
+          }
+        },
+        "required": [
+          "fullName",
+          "lockfilePath",
+          "branch",
+          "status",
+          "error",
+          "lastCheckedAt",
+          "lastChangedAt",
+          "commitSha",
+          "url"
+        ]
+      },
+      "ProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exposure": {
+            "enum": [
+              "UNKNOWN",
+              "PUBLIC",
+              "INTERNAL"
+            ],
+            "type": "string"
+          },
+          "runtime": {
+            "type": "string"
+          },
+          "runtimeVersion": {
+            "type": "string"
+          },
+          "os": {
+            "type": "string"
+          },
+          "distro": {
+            "type": "string"
+          },
+          "arch": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "technologyIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "currentSnapshot": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotDto"
+              }
+            ]
+          },
+          "lastScan": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScanSummaryDto"
+              }
+            ]
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ProjectCountsDto"
+          },
+          "github": {
+            "nullable": true,
+            "description": "GitHub 저장소와 연결된 프로젝트면 그 정보",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProjectGithubDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "environments",
+          "exposure",
+          "runtime",
+          "runtimeVersion",
+          "os",
+          "distro",
+          "arch",
+          "notes",
+          "technologyIds",
+          "createdAt",
+          "updatedAt",
+          "currentSnapshot",
+          "lastScan",
+          "counts",
+          "github"
+        ]
+      },
+      "ProjectInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "environments": {
+            "type": "array",
+            "description": "운영/개발/테스트 중 해당하는 환경 (복수 선택)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PRODUCTION",
+                "DEVELOPMENT",
+                "TEST"
+              ]
+            }
+          },
+          "exposure": {
+            "type": "string",
+            "description": "인터넷 공개 여부: 공개 / 내부 / 알 수 없음",
+            "enum": [
+              "PUBLIC",
+              "INTERNAL",
+              "UNKNOWN"
+            ]
+          },
+          "runtime": {
+            "type": "string",
+            "description": "런타임 (예: Node.js)",
+            "maxLength": 60
+          },
+          "runtimeVersion": {
+            "type": "string",
+            "description": "런타임의 정확한 버전 (예: 22.11.0)",
+            "maxLength": 60
+          },
+          "os": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "distro": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "arch": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "notes": {
+            "type": "string",
+            "description": "담당 메모",
+            "maxLength": 5000
+          },
+          "technologyIds": {
+            "description": "프로젝트가 쓰는 언어·프레임워크 등 (기술 카탈로그 ID)",
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ProjectUpdateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PRODUCTION",
+                "DEVELOPMENT",
+                "TEST"
+              ]
+            }
+          },
+          "exposure": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "INTERNAL",
+              "UNKNOWN"
+            ]
+          },
+          "runtime": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "runtimeVersion": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "os": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "distro": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "arch": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "technologyIds": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ManualPackageDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 214
+          },
+          "version": {
+            "type": "string",
+            "description": "정확한 설치 버전 (범위 불가)",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "name",
+          "version"
+        ]
+      },
+      "SnapshotInputDto": {
+        "type": "object",
+        "properties": {
+          "inputType": {
+            "enum": [
+              "LOCKFILE",
+              "MANUAL"
+            ],
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "lockfileContent": {
+            "type": "string",
+            "description": "lockfile 내용 (package-lock.json v2/v3, pnpm-lock.yaml v5/v6/v9, yarn.lock v1/Berry). 서버는 데이터로만 해석하며 실행하지 않는다.",
+            "maxLength": 33554432
+          },
+          "packageJsonContent": {
+            "type": "string",
+            "description": "선택: package.json 내용. lockfile 과의 불일치 확인에만 쓰며 버전 범위를 설치 버전으로 쓰지 않는다.",
+            "maxLength": 2097152
+          },
+          "packages": {
+            "description": "수동 등록: 패키지명과 정확한 버전",
+            "maxItems": 50000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManualPackageDto"
+            }
+          }
+        },
+        "required": [
+          "inputType"
+        ]
+      },
+      "SnapshotPreviewDto": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true,
+            "description": "valid 가 false 일 때의 사유"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lockfileVersion": {
+            "type": "number",
+            "nullable": true
+          },
+          "lockfileFormat": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "NPM",
+              "PNPM",
+              "YARN"
+            ]
+          },
+          "packageCount": {
+            "type": "number"
+          },
+          "scannableCount": {
+            "type": "number"
+          },
+          "directCount": {
+            "type": "number"
+          },
+          "devCount": {
+            "type": "number"
+          },
+          "multiVersionCount": {
+            "type": "number",
+            "description": "여러 버전으로 설치된 패키지 수"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "disclosure": {
+            "type": "string",
+            "description": "외부로 전송되는 정보 안내"
+          }
+        },
+        "required": [
+          "valid",
+          "error",
+          "errorCode",
+          "lockfileVersion",
+          "lockfileFormat",
+          "packageCount",
+          "scannableCount",
+          "directCount",
+          "devCount",
+          "multiVersionCount",
+          "warnings",
+          "disclosure"
+        ]
+      },
+      "SnapshotCreatedDto": {
+        "type": "object",
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/SnapshotDto"
+          },
+          "scan": {
+            "description": "자동으로 시작된 검사",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScanSummaryDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "snapshot",
+          "scan"
+        ]
+      },
+      "SnapshotPackageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "installPath": {
+            "type": "string"
+          },
+          "isDirect": {
+            "type": "boolean"
+          },
+          "isDev": {
+            "type": "boolean"
+          },
+          "isOptional": {
+            "type": "boolean"
+          },
+          "dependencyPath": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "refKind": {
+            "type": "string"
+          },
+          "scannable": {
+            "type": "boolean"
+          },
+          "unsupportedReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "installPath",
+          "isDirect",
+          "isDev",
+          "isOptional",
+          "dependencyPath",
+          "refKind",
+          "scannable",
+          "unsupportedReason"
+        ]
+      },
+      "SnapshotPackageListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SnapshotPackageDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "FindingListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "vulnerabilityId": {
+            "type": "string"
+          },
+          "vulnerabilityTitle": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string",
+            "description": "현재 설치 버전"
+          },
+          "versionMatch": {
+            "type": "string",
+            "description": "AFFECTED: 영향 버전 일치 / NOT_AFFECTED: 확인된 영향 범위에 미포함 / UNKNOWN: 판단 불가",
+            "enum": [
+              "UNKNOWN",
+              "AFFECTED",
+              "NOT_AFFECTED"
+            ]
+          },
+          "exploitCondition": {
+            "type": "string",
+            "description": "MET: 조건 충족 / NOT_MET: 조건 불충족 / NEEDS_CHECK: 확인 필요 / NOT_ANALYZED: 아직 분석하지 않음",
+            "enum": [
+              "MET",
+              "NOT_MET",
+              "NEEDS_CHECK",
+              "NOT_ANALYZED"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "description": "대응 우선순위 (취약점 심각도와 별개)",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "NEEDS_CHECK",
+              "URGENT"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "description": "취약점 자체의 심각도",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ]
+          },
+          "cvssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "kevListed": {
+            "type": "boolean"
+          },
+          "epssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "fixedVersion": {
+            "type": "string",
+            "nullable": true,
+            "description": "확인된 수정 버전. 없으면 null (패치 미확인)"
+          },
+          "remediationStatus": {
+            "type": "string",
+            "enum": [
+              "UNREVIEWED",
+              "IN_REVIEW",
+              "PLANNED",
+              "RISK_ACCEPTED",
+              "DONE"
+            ]
+          },
+          "reviewDueAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "needsRecheck": {
+            "type": "boolean"
+          },
+          "recheckReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDirect": {
+            "type": "boolean"
+          },
+          "devOnly": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "현재 구성에서 더 이상 검출되지 않게 된 시각"
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "analyzedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "vulnerabilityId",
+          "vulnerabilityTitle",
+          "identifiers",
+          "packageName",
+          "version",
+          "versionMatch",
+          "exploitCondition",
+          "priority",
+          "severity",
+          "cvssScore",
+          "kevListed",
+          "epssScore",
+          "fixedVersion",
+          "remediationStatus",
+          "reviewDueAt",
+          "needsRecheck",
+          "recheckReason",
+          "isDirect",
+          "devOnly",
+          "resolvedAt",
+          "resolution",
+          "analyzedAt"
+        ]
+      },
+      "FindingListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FindingListItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "FindingReviewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": "string",
+            "description": "작성 당시의 GitHub 아이디"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "MET",
+              "NOT_MET",
+              "NEEDS_CHECK",
+              "NOT_ANALYZED"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "basedOnSnapshotId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "authorName",
+          "verdict",
+          "checks",
+          "rationale",
+          "basedOnSnapshotId",
+          "createdAt"
+        ]
+      },
+      "FindingHistoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromStatus": {
+            "type": "string"
+          },
+          "toStatus": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": "string",
+            "description": "작성 당시의 GitHub 아이디"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fromStatus",
+          "toStatus",
+          "authorName",
+          "reason",
+          "createdAt"
+        ]
+      },
+      "FindingDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "vulnerabilityId": {
+            "type": "string"
+          },
+          "vulnerabilityTitle": {
+            "type": "string"
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string",
+            "description": "현재 설치 버전"
+          },
+          "versionMatch": {
+            "description": "AFFECTED: 영향 버전 일치 / NOT_AFFECTED: 확인된 영향 범위에 미포함 / UNKNOWN: 판단 불가",
+            "enum": [
+              "UNKNOWN",
+              "AFFECTED",
+              "NOT_AFFECTED"
+            ],
+            "type": "string"
+          },
+          "exploitCondition": {
+            "description": "MET: 조건 충족 / NOT_MET: 조건 불충족 / NEEDS_CHECK: 확인 필요 / NOT_ANALYZED: 아직 분석하지 않음",
+            "enum": [
+              "MET",
+              "NOT_MET",
+              "NEEDS_CHECK",
+              "NOT_ANALYZED"
+            ],
+            "type": "string"
+          },
+          "priority": {
+            "description": "대응 우선순위 (취약점 심각도와 별개)",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "NEEDS_CHECK",
+              "URGENT"
+            ],
+            "type": "string"
+          },
+          "severity": {
+            "description": "취약점 자체의 심각도",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "cvssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "kevListed": {
+            "type": "boolean"
+          },
+          "epssScore": {
+            "type": "number",
+            "nullable": true
+          },
+          "fixedVersion": {
+            "type": "string",
+            "nullable": true,
+            "description": "확인된 수정 버전. 없으면 null (패치 미확인)"
+          },
+          "remediationStatus": {
+            "enum": [
+              "UNREVIEWED",
+              "IN_REVIEW",
+              "PLANNED",
+              "RISK_ACCEPTED",
+              "DONE"
+            ],
+            "type": "string"
+          },
+          "reviewDueAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "needsRecheck": {
+            "type": "boolean"
+          },
+          "recheckReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDirect": {
+            "type": "boolean"
+          },
+          "devOnly": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "현재 구성에서 더 이상 검출되지 않게 된 시각"
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "analyzedAt": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "object",
+            "description": "판단 근거: 출처별 평가, 일치 구간, 수정 버전, 확인할 조건, 설치 경로"
+          },
+          "priorityReasons": {
+            "type": "object",
+            "description": "우선순위 산정에 적용된 규칙과 입력값"
+          },
+          "ruleVersion": {
+            "type": "string"
+          },
+          "acceptReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FindingReviewDto"
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FindingHistoryDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "vulnerabilityId",
+          "vulnerabilityTitle",
+          "identifiers",
+          "packageName",
+          "version",
+          "versionMatch",
+          "exploitCondition",
+          "priority",
+          "severity",
+          "cvssScore",
+          "kevListed",
+          "epssScore",
+          "fixedVersion",
+          "remediationStatus",
+          "reviewDueAt",
+          "needsRecheck",
+          "recheckReason",
+          "isDirect",
+          "devOnly",
+          "resolvedAt",
+          "resolution",
+          "analyzedAt",
+          "evidence",
+          "priorityReasons",
+          "ruleVersion",
+          "acceptReason",
+          "reviews",
+          "history"
+        ]
+      },
+      "ReviewCheckDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "state": {
+            "type": "string",
+            "description": "CONFIRMED: 해당함 / NOT_APPLICABLE: 해당 없음 / UNKNOWN: 확인 못 함",
+            "enum": [
+              "CONFIRMED",
+              "NOT_APPLICABLE",
+              "UNKNOWN"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "label",
+          "state"
+        ]
+      },
+      "CreateReviewDto": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "description": "악용 조건 판정: 충족 / 불충족 / 확인 필요",
+            "enum": [
+              "MET",
+              "NOT_MET",
+              "NEEDS_CHECK"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "description": "판단 근거 (필수)",
+            "minLength": 5,
+            "maxLength": 4000
+          },
+          "checks": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewCheckDto"
+            }
+          }
+        },
+        "required": [
+          "verdict",
+          "rationale"
+        ]
+      },
+      "UpdateStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNREVIEWED",
+              "IN_REVIEW",
+              "PLANNED",
+              "RISK_ACCEPTED",
+              "DONE"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "변경 사유. 위험 수용일 때는 필수",
+            "maxLength": 2000
+          },
+          "reviewDueAt": {
+            "type": "string",
+            "description": "위험 수용 재검토 기한 (ISO 날짜). 위험 수용일 때 필수"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ChannelProvidersDto": {
+        "type": "object",
+        "properties": {
+          "telegram": {
+            "type": "boolean",
+            "description": "서비스 텔레그램 봇이 설정되어 있는지"
+          },
+          "telegramBotUsername": {
+            "type": "string",
+            "nullable": true,
+            "description": "서비스 텔레그램 봇 아이디 (연결 안내용)"
+          },
+          "discord": {
+            "type": "boolean",
+            "description": "서비스 디스코드 봇이 설정되어 있는지"
+          }
+        },
+        "required": [
+          "telegram",
+          "telegramBotUsername",
+          "discord"
+        ]
+      },
+      "ChannelDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "TELEGRAM",
+              "DISCORD"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "보낼 곳 설명 (예: \"디스코드 · 내서버 #alerts\"). 비밀값은 저장하지 않는다."
+          },
+          "status": {
+            "description": "ACTIVE / PAUSED: 일시 중지 / ERROR: 봇이 차단·추방되었거나 채널이 사라짐",
+            "enum": [
+              "ERROR",
+              "ACTIVE",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastErrorAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSuccessAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "label",
+          "status",
+          "lastError",
+          "lastErrorAt",
+          "lastSuccessAt",
+          "createdAt"
+        ]
+      },
+      "UpdateChannelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ChannelTestResultDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "description": "결과 설명"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelDto"
+          },
+          "deliveryId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "ok",
+          "message",
+          "channel",
+          "deliveryId"
+        ]
+      },
+      "ChannelLinkInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "화면에 보일 이름 (예: 보안 알림방)",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "TelegramLinkDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "개인 대화로 받기: 이 주소를 열고 [시작]을 누른다"
+          },
+          "groupUrl": {
+            "type": "string",
+            "description": "그룹으로 받기: 봇을 그룹에 초대하면서 연결한다"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "url",
+          "groupUrl",
+          "expiresAt"
+        ]
+      },
+      "DiscordLinkDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "디스코드에서 봇을 넣을 서버를 고르는 주소"
+          }
+        },
+        "required": [
+          "requestId",
+          "url"
+        ]
+      },
+      "ChannelLinkStatusDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TELEGRAM",
+              "DISCORD"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "PENDING / GUILD_SELECTED(디스코드: 채널 선택 대기) / COMPLETED / EXPIRED / FAILED",
+            "enum": [
+              "FAILED",
+              "PENDING",
+              "COMPLETED",
+              "EXPIRED",
+              "GUILD_SELECTED"
+            ]
+          },
+          "guildName": {
+            "type": "string",
+            "nullable": true
+          },
+          "channelId": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "requestId",
+          "type",
+          "status",
+          "guildName",
+          "channelId",
+          "error"
+        ]
+      },
+      "DiscordChannelOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CompleteDiscordLinkDto": {
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string",
+            "description": "알림을 받을 디스코드 채널 ID",
+            "maxLength": 30
+          }
+        },
+        "required": [
+          "channelId"
+        ]
+      },
+      "PlaceholderDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "description"
+        ]
+      },
+      "TemplateDefaultsDto": {
+        "type": "object",
+        "properties": {
+          "TECH_INTEREST": {
+            "type": "string"
+          },
+          "PROJECT_IMPACT": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "TECH_INTEREST",
+          "PROJECT_IMPACT"
+        ]
+      },
+      "TemplateInfoDto": {
+        "type": "object",
+        "properties": {
+          "placeholders": {
+            "description": "쓸 수 있는 자리표시자",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceholderDto"
+            }
+          },
+          "defaults": {
+            "description": "규칙 종류별 기본 틀 (편집 시작점)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TemplateDefaultsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "placeholders",
+          "defaults"
+        ]
+      },
+      "TemplatePreviewInputDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TECH_INTEREST",
+              "PROJECT_IMPACT"
+            ]
+          },
+          "template": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "kind",
+          "template"
+        ]
+      },
+      "TemplatePreviewDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "예시 데이터로 채운 결과 (실제 알림과 같은 방식으로 바꾼다)"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "ScheduleDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "IMMEDIATE",
+              "DAILY",
+              "WEEKLY",
+              "INTERVAL"
+            ]
+          },
+          "times": {
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "days": {
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "time": {
+            "type": "string",
+            "maxLength": 5
+          },
+          "hours": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "RuleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "TECH_INTEREST",
+              "PROJECT_IMPACT"
+            ],
+            "type": "string"
+          },
+          "eventTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "minSeverity": {
+            "nullable": true,
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ],
+            "type": "string"
+          },
+          "projectIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleDto"
+          },
+          "scheduleText": {
+            "type": "string",
+            "description": "사람이 읽는 받는 시간 (예: 매일 09:00, 18:00)"
+          },
+          "template": {
+            "type": "string",
+            "nullable": true,
+            "description": "사용자 문구 틀. null 이면 기본 형식"
+          },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "warnings": {
+            "description": "현재 설정으로는 발송되지 않는 이유가 있으면 알려준다",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "eventTypes",
+          "minSeverity",
+          "projectIds",
+          "schedule",
+          "scheduleText",
+          "template",
+          "channelIds",
+          "enabled",
+          "warnings",
+          "createdAt"
+        ]
+      },
+      "RuleInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "kind": {
+            "description": "TECH_INTEREST: 저장된 관심 기술 기준 / PROJECT_IMPACT: 프로젝트 영향 기준",
+            "enum": [
+              "TECH_INTEREST",
+              "PROJECT_IMPACT"
+            ],
+            "type": "string"
+          },
+          "eventTypes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "TECH_NEW_VULN",
+                "PROJECT_NEW_MATCH",
+                "KEV_ADDED",
+                "PATCH_AVAILABLE",
+                "AFFECTED_RANGE_CHANGED",
+                "PRIORITY_RAISED",
+                "INITIAL_SCAN_SUMMARY"
+              ]
+            }
+          },
+          "minSeverity": {
+            "nullable": true,
+            "description": "이 심각도 이상만. 비우면 제한 없음. 심각도 미제공 항목은 항상 포함된다.",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ],
+            "type": "string"
+          },
+          "projectIds": {
+            "description": "PROJECT_IMPACT: 대상 프로젝트. 비우면 내 모든 프로젝트",
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "schedule": {
+            "description": "받는 시간",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScheduleDto"
+              }
+            ]
+          },
+          "template": {
+            "type": "string",
+            "nullable": true,
+            "description": "알림 문구 틀. 비우면 기본 형식. {제목} 같은 자리표시자를 쓸 수 있다.",
+            "maxLength": 2000
+          },
+          "channelIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "eventTypes",
+          "schedule",
+          "channelIds"
+        ]
+      },
+      "DeliveryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "EVENT: 이벤트 알림 / DIGEST: 일일 요약 / TEST: 연결 테스트"
+          },
+          "eventType": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "channelName": {
+            "type": "string"
+          },
+          "channelType": {
+            "type": "string"
+          },
+          "ruleName": {
+            "type": "string",
+            "nullable": true
+          },
+          "vulnerabilityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "projectId": {
+            "type": "string",
+            "nullable": true
+          },
+          "projectName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "FAILED",
+              "PENDING",
+              "SENDING",
+              "SENT",
+              "RETRYING",
+              "SUPPRESSED",
+              "HELD",
+              "DIGEST_PENDING",
+              "DIGESTED",
+              "CANCELLED"
+            ],
+            "type": "string"
+          },
+          "attempts": {
+            "type": "number"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastStatusCode": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "eventType",
+          "title",
+          "channelId",
+          "channelName",
+          "channelType",
+          "ruleName",
+          "vulnerabilityId",
+          "projectId",
+          "projectName",
+          "status",
+          "attempts",
+          "nextAttemptAt",
+          "lastError",
+          "lastStatusCode",
+          "createdAt",
+          "sentAt"
+        ]
+      },
+      "DeliveryListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "GithubStatusDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "서비스 GitHub 앱이 설정되어 있는지"
+          },
+          "installUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "앱을 설치하거나 저장소 선택을 바꾸는 GitHub 화면 주소"
+          },
+          "syncMinutes": {
+            "type": "number",
+            "description": "연결된 저장소의 lockfile 변경을 확인하는 주기 (분)"
+          }
+        },
+        "required": [
+          "enabled",
+          "installUrl",
+          "syncMinutes"
+        ]
+      },
+      "GithubLinkStartDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "이동할 GitHub 인증 주소"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "GithubRepoDto": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "defaultBranch": {
+            "type": "string"
+          },
+          "importedPaths": {
+            "description": "이미 프로젝트로 가져온 lockfile 경로",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "repoId",
+          "fullName",
+          "private",
+          "description",
+          "defaultBranch",
+          "importedPaths"
+        ]
+      },
+      "GithubLinkDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "PENDING / READY(저장소 선택 대기) / COMPLETED / FAILED / EXPIRED",
+            "enum": [
+              "FAILED",
+              "PENDING",
+              "READY",
+              "COMPLETED",
+              "EXPIRED"
+            ]
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "installUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "repos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubRepoDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "error",
+          "expiresAt",
+          "installUrl",
+          "repos"
+        ]
+      },
+      "GithubInspectInputDto": {
+        "type": "object",
+        "properties": {
+          "repoIds": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{1,20}$"
+            }
+          }
+        },
+        "required": [
+          "repoIds"
+        ]
+      },
+      "GithubLockfileDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "NPM",
+              "PNPM",
+              "YARN"
+            ]
+          },
+          "size": {
+            "type": "number"
+          },
+          "imported": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "format",
+          "size",
+          "imported"
+        ]
+      },
+      "GithubInspectRepoDto": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "defaultBranch": {
+            "type": "string"
+          },
+          "lockfiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubLockfileDto"
+            }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "저장소가 커서 일부 폴더만 찾았는지"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "repoId",
+          "fullName",
+          "defaultBranch",
+          "lockfiles",
+          "truncated",
+          "error"
+        ]
+      },
+      "GithubInspectDto": {
+        "type": "object",
+        "properties": {
+          "repos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubInspectRepoDto"
+            }
+          }
+        },
+        "required": [
+          "repos"
+        ]
+      },
+      "GithubImportItemDto": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string",
+            "pattern": "^\\d{1,20}$"
+          },
+          "lockfilePath": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "repoId",
+          "lockfilePath"
+        ]
+      },
+      "GithubImportInputDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubImportItemDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GithubImportedProjectDto": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId",
+          "name"
+        ]
+      },
+      "GithubSkippedDto": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string"
+          },
+          "lockfilePath": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repoId",
+          "lockfilePath",
+          "reason"
+        ]
+      },
+      "GithubImportResultDto": {
+        "type": "object",
+        "properties": {
+          "created": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubImportedProjectDto"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubSkippedDto"
+            }
+          }
+        },
+        "required": [
+          "created",
+          "skipped"
+        ]
+      },
+      "DashboardCardDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          },
+          "query": {
+            "type": "object",
+            "description": "이 숫자를 만든 필터. 목록 화면이 같은 필터를 그대로 쓴다."
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "description",
+          "count",
+          "query"
+        ]
+      },
+      "DashboardProjectDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lastScanStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastScanAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasSnapshot": {
+            "type": "boolean"
+          },
+          "urgent": {
+            "type": "number"
+          },
+          "open": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "lastScanStatus",
+          "lastScanAt",
+          "hasSnapshot",
+          "urgent",
+          "open"
+        ]
+      },
+      "SourceStatusDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "GHSA, OSV, NVD, KEV, EPSS"
+          },
+          "role": {
+            "type": "string",
+            "description": "이 소스가 맡는 역할"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalMinutes": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "description": "NEVER_RUN: 아직 실행 전 / OK / FAILING: 최근 수집 실패",
+            "enum": [
+              "NEVER_RUN",
+              "OK",
+              "FAILING"
+            ]
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSuccessAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "consecutiveFailures": {
+            "type": "number"
+          },
+          "backfillDone": {
+            "type": "boolean",
+            "description": "초기 적재 완료 여부"
+          },
+          "lagging": {
+            "type": "boolean",
+            "description": "마지막 성공이 주기의 2배보다 오래됨"
+          },
+          "running": {
+            "type": "boolean",
+            "description": "지금 수집이 진행 중인지"
+          }
+        },
+        "required": [
+          "key",
+          "role",
+          "enabled",
+          "intervalMinutes",
+          "status",
+          "lastAttemptAt",
+          "lastSuccessAt",
+          "lastError",
+          "consecutiveFailures",
+          "backfillDone",
+          "lagging",
+          "running"
+        ]
+      },
+      "DashboardDto": {
+        "type": "object",
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardCardDto"
+            }
+          },
+          "urgentFindings": {
+            "description": "긴급 검토 항목 (cards 의 urgent 와 같은 필터)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FindingListItemDto"
+            }
+          },
+          "recentVulnerabilities": {
+            "description": "최근 공개 취약점. 저장된 관심 기술이 있으면 그 기준, 없으면 수집된 전체",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VulnerabilityListItemDto"
+            }
+          },
+          "recentQuery": {
+            "type": "object"
+          },
+          "recentUsesInterests": {
+            "type": "boolean",
+            "description": "최근 공개 목록이 저장된 관심 기술로 걸러졌는지"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardProjectDto"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusDto"
+            }
+          },
+          "activeScans": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cards",
+          "urgentFindings",
+          "recentVulnerabilities",
+          "recentQuery",
+          "recentUsesInterests",
+          "projects",
+          "sources",
+          "activeScans"
+        ]
+      },
+      "IngestionRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "windowFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "windowTo": {
+            "type": "string",
+            "nullable": true
+          },
+          "fetched": {
+            "type": "number"
+          },
+          "upserted": {
+            "type": "number"
+          },
+          "changed": {
+            "type": "number"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "status",
+          "windowFrom",
+          "windowTo",
+          "fetched",
+          "upserted",
+          "changed",
+          "error",
+          "startedAt",
+          "finishedAt"
+        ]
+      },
+      "IngestionStatusDto": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusDto"
+            }
+          },
+          "recentRuns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestionRunDto"
+            }
+          },
+          "vulnerabilityCount": {
+            "type": "number",
+            "description": "수집된 취약점 수 (피드의 \"전체\" 범위)"
+          },
+          "initialFeedDays": {
+            "type": "number",
+            "description": "최초 피드 적재 범위(일)"
+          },
+          "pendingJobs": {
+            "type": "number",
+            "description": "대기·실행 중인 백그라운드 작업 수"
+          }
+        },
+        "required": [
+          "sources",
+          "recentRuns",
+          "vulnerabilityCount",
+          "initialFeedDays",
+          "pendingJobs"
+        ]
+      },
+      "PriorityRuleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "condition",
+          "result"
+        ]
+      },
+      "PriorityRulesDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "rules": {
+            "description": "위에서부터 첫 일치를 적용한다",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriorityRuleDto"
+            }
+          },
+          "adjustments": {
+            "description": "기본 등급에 더해지는 보정",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PriorityRuleDto"
+            }
+          },
+          "epssThreshold": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "rules",
+          "adjustments",
+          "epssThreshold",
+          "notes"
+        ]
+      }
+    }
+  }
+}

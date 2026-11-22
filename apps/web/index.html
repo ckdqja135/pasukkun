@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>pasukkun - 취약점 모니터링</title>
+    <!-- 첫 화면이 깜빡이지 않도록 저장된 테마를 먼저 적용한다. CSP(script-src 'self')를 쓸 수 있게 외부 파일로 둔다. -->
+    <script src="/theme-init.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

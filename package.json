@@ -1,0 +1,23 @@
+{
+  "name": "pasukkun",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=24.7.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @pasukkun/server --filter @pasukkun/web dev",
+    "dev:api": "pnpm --filter @pasukkun/server dev:api",
+    "dev:worker": "pnpm --filter @pasukkun/server dev:worker",
+    "dev:web": "pnpm --filter @pasukkun/web dev",
+    "build": "pnpm --filter @pasukkun/server build && pnpm openapi && pnpm --filter @pasukkun/web build",
+    "test": "pnpm -r test",
+    "db:migrate": "pnpm --filter @pasukkun/server db:migrate",
+    "db:deploy": "pnpm --filter @pasukkun/server db:deploy",
+    "openapi": "pnpm --filter @pasukkun/server openapi && pnpm --filter @pasukkun/api-types generate",
+    "test:e2e": "pnpm --filter @pasukkun/server test:e2e",
+    "typecheck": "pnpm --filter @pasukkun/server typecheck && pnpm --filter @pasukkun/web typecheck",
+    "user:list": "node apps/server/dist/cli.js user:list"
+  }
+}
