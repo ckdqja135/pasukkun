@@ -1514,6 +1514,11 @@ export interface components {
             schedule: components["schemas"]["ScheduleDto"];
             /** @description 사람이 읽는 받는 시간 (예: 매일 09:00, 18:00) */
             scheduleText: string;
+            /**
+             * @description 모아 받을 때의 형식
+             * @enum {string}
+             */
+            digestFormat: "LIST" | "BRIEFING";
             /** @description 사용자 문구 틀. null 이면 기본 형식 */
             template: string | null;
             channelIds: string[];
@@ -1539,6 +1544,11 @@ export interface components {
             projectIds?: string[];
             /** @description 받는 시간 */
             schedule: components["schemas"]["ScheduleDto"];
+            /**
+             * @description 모아 받을 때의 형식. BRIEFING 은 받는 시각마다 새 항목이 없어도 현황을 보낸다. 즉시 받기에서는 쓰지 않는다.
+             * @enum {string}
+             */
+            digestFormat?: "LIST" | "BRIEFING";
             /** @description 알림 문구 틀. 비우면 기본 형식. {제목} 같은 자리표시자를 쓸 수 있다. */
             template?: string | null;
             channelIds: string[];

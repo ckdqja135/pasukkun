@@ -304,7 +304,23 @@ Click **규칙 추가** (Add rule) and set:
 | 매주 (Weekly) | Collected and sent on the chosen weekdays at the set time |
 | N시간마다 (Every N hours) | Collected every 1, 2, 3, 4, 6, 8, or 12 hours, counted from midnight (every 6 hours means 00:00, 06:00, 12:00, 18:00) |
 
-Nothing is sent when there is nothing collected. Times follow the time zone in the **시간대 · 방해 금지** tab.
+Times follow the time zone in the **시간대 · 방해 금지** tab.
+
+When a rule collects instead of sending immediately, **모아 받는 형식** (Digest format) chooses what arrives at each time:
+
+| Format | What you get |
+|-|-|
+| 알림 목록 (Alert list) | The titles of the collected alerts. Nothing is sent when nothing was collected |
+| 보안 브리핑 (Security briefing) | A status report sent at every set time, even when nothing new arrived |
+
+A security briefing is titled 오전 (morning), 오후 (afternoon), 저녁 (evening) or 새벽 (early morning) by the time it is sent, and contains:
+
+- A short summary: how many new issues came in since the last briefing, whether any are in KEV, how many of your projects are affected, and how many patches were confirmed.
+- **새 이슈** (New issues): each issue with its priority, KEV status, affected projects, and whether action is needed (조치 필요) or it is for reference only (참고).
+- **패치 확인** (Patch check): items that the latest scans no longer find because the installed version changed, and items you marked 조치 완료 (Done) that will be confirmed at the next check (조치 보고).
+- **국내 보안공지** (KISA notices): KISA notices collected since the last briefing.
+
+For a GitHub project, pasukkun rechecks the lockfile on its own, so an item marked 조치 완료 moves to the confirmed patches after you push the upgrade.
 
 **Writing your own message** (알림 문구 직접 정하기)
 
@@ -318,7 +334,7 @@ Turn on the switch to start from the default template and edit it.
 - **기본 틀로 되돌리기** (Restore default) brings back the default. Turning the switch off uses the default format.
 - Unknown placeholders are reported when you save. Placeholders without a value become "-".
 - Text is sent as plain text. HTML and mentions like @everyone do not work.
-- Digests and first scan summaries are sent as a list.
+- Alert lists, security briefings, and first scan summaries use their own fixed format, not your template.
 
 | Placeholder | Value |
 |-|-|

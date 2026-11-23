@@ -71,6 +71,7 @@ export class RuleService {
       projectIds: (row.projectIds ?? []) as string[],
       schedule: row.schedule as unknown as ScheduleDto,
       scheduleText: describeSchedule(row.schedule as unknown as DeliverySchedule),
+      digestFormat: row.digestFormat === 'BRIEFING' ? 'BRIEFING' : 'LIST',
       template: row.template,
       channelIds: row.channels.map((link) => link.channelId),
       enabled: row.enabled,
@@ -92,6 +93,9 @@ export class RuleService {
     } catch (error) {
       if (error instanceof ScheduleError || error instanceof TemplateError) throw new BadRequestException(error.message);
       throw error;
+    }
+    if (dto.digestFormat === 'BRIEFING' && schedule.type === 'IMMEDIATE') {
+      throw new BadRequestException('보안 브리핑은 받는 시간을 정해 모아 받을 때만 쓸 수 있습니다.');
     }
     const allowed: readonly string[] = dto.kind === 'TECH_INTEREST' ? TECH_EVENT_TYPES : PROJECT_EVENT_TYPES;
     const eventTypes = [...new Set(dto.eventTypes)];
@@ -140,6 +144,7 @@ export class RuleService {
         minSeverity: dto.minSeverity ?? null,
         projectIds,
         schedule: schedule as object,
+        digestFormat: dto.digestFormat ?? 'LIST',
         template,
         lastDigestAt: new Date(),
         enabled: dto.enabled ?? true,
@@ -168,6 +173,7 @@ export class RuleService {
           minSeverity: dto.minSeverity ?? null,
           projectIds,
           schedule: schedule as object,
+          digestFormat: dto.digestFormat ?? 'LIST',
           template,
           enabled: dto.enabled ?? true,
           channels: { create: channelIds.map((channelId) => ({ channelId })) },

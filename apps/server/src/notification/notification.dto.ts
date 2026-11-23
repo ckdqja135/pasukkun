@@ -189,6 +189,11 @@ export class RuleInputDto {
   @Type(() => ScheduleDto)
   schedule: ScheduleDto;
 
+  /** 모아 받을 때의 형식. BRIEFING 은 받는 시각마다 새 항목이 없어도 현황을 보낸다. 즉시 받기에서는 쓰지 않는다. */
+  @IsOptional()
+  @IsIn(['LIST', 'BRIEFING'])
+  digestFormat?: 'LIST' | 'BRIEFING';
+
   /** 알림 문구 틀. 비우면 기본 형식. {제목} 같은 자리표시자를 쓸 수 있다. */
   @IsOptional()
   @IsString()
@@ -216,6 +221,8 @@ export class RuleDto {
   schedule: ScheduleDto;
   /** 사람이 읽는 받는 시간 (예: 매일 09:00, 18:00) */
   scheduleText: string;
+  /** 모아 받을 때의 형식 */
+  digestFormat: 'LIST' | 'BRIEFING';
   /** 사용자 문구 틀. null 이면 기본 형식 */
   template: string | null;
   channelIds: string[];

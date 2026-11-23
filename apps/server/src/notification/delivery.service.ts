@@ -277,17 +277,17 @@ export class DeliveryService {
   /**
    * 요약 규칙마다, 마지막 요약 뒤에 예정 시각(사용자 시간대)이 지났으면
    * 기다리던 알림을 채널별 요약 한 건으로 묶는다.
+   * 보안 브리핑 형식은 기다리던 알림이 없어도 예정 시각마다 현황을 보낸다.
    */
   async createDueDigests(now = new Date()): Promise<number> {
-    const waiting = await this.prisma.notificationDelivery.findMany({
-      where: { status: 'DIGEST_PENDING' },
-      select: { ruleId: true },
-      distinct: ['ruleId'],
-    });
+    const [waiting, briefings] = await Promise.all([
+      this.prisma.notificationDelivery.findMany({ where: { status: 'DIGEST_PENDING' }, select: { ruleId: true }, distinct: ['ruleId'] }),
+      this.prisma.subscriptionRule.findMany({ where: { enabled: true, digestFormat: 'BRIEFING' }, select: { id: true } }),
+    ]);
+    const ruleIds = new Set([...waiting.map((row) => row.ruleId), ...briefings.map((row) => row.id)].filter((id): id is string => id !== null));
     let created = 0;
-    for (const { ruleId } of waiting) {
-      if (!ruleId) continue;
-      const rule = await this.prisma.subscriptionRule.findUnique({ where: { id: ruleId } });
+    for (const ruleId of ruleIds) {
+      const rule = await this.prisma.subscriptionRule.findUnique({ where: { id: ruleId }, include: { channels: { include: { channel: { select: { status: true } } } } } });
       if (!rule) continue;
       const settings = await this.prisma.userSettings.upsert({ where: { userId: rule.userId }, update: {}, create: { userId: rule.userId } });
       let schedule: DeliverySchedule;
@@ -298,9 +298,11 @@ export class DeliveryService {
       }
       const slot = digestDue(now, schedule, settings.timezone, rule.lastDigestAt ?? rule.createdAt);
       if (!slot) continue;
+      const briefing = rule.enabled && rule.digestFormat === 'BRIEFING';
       await this.prisma.$transaction(async (tx) => {
         const pending = await tx.notificationDelivery.findMany({ where: { ruleId, status: 'DIGEST_PENDING' }, select: { id: true, channelId: true } });
         const byChannel = new Map<string, string[]>();
+        if (briefing) for (const link of rule.channels) if (link.channel.status === 'ACTIVE') byChannel.set(link.channelId, []);
         for (const row of pending) byChannel.set(row.channelId, [...(byChannel.get(row.channelId) ?? []), row.id]);
         for (const [channelId, ids] of byChannel) {
           const key = `digest:${ruleId}:${channelId}:${slot.toISOString()}`;
@@ -314,11 +316,11 @@ export class DeliveryService {
                 kind: 'DIGEST',
                 dedupeKey: key,
                 status: 'PENDING',
-                title: `${rule.name} 요약 (${ids.length}건, ${describeSchedule(schedule)})`.slice(0, 300),
+                title: (briefing ? `${rule.name} 보안 브리핑 (새 항목 ${ids.length}건)` : `${rule.name} 요약 (${ids.length}건, ${describeSchedule(schedule)})`).slice(0, 300),
               },
               select: { id: true },
             }));
-          await tx.notificationDelivery.updateMany({ where: { id: { in: ids } }, data: { status: 'DIGESTED', digestId: digest.id } });
+          if (ids.length > 0) await tx.notificationDelivery.updateMany({ where: { id: { in: ids } }, data: { status: 'DIGESTED', digestId: digest.id } });
           created += 1;
         }
         await tx.subscriptionRule.update({ where: { id: ruleId }, data: { lastDigestAt: now } });

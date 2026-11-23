@@ -445,7 +445,7 @@ function RulesTab() {
       unwrap(
         api.PUT('/api/v1/rules/{id}', {
           params: { path: { id: rule.id } },
-          body: { name: rule.name, kind: rule.kind, projectIds: rule.projectIds, channelIds: rule.channelIds, schedule: rule.schedule, template: rule.template, eventTypes: rule.eventTypes as EventType[], minSeverity: rule.minSeverity === 'UNKNOWN' ? null : rule.minSeverity, enabled: !rule.enabled },
+          body: { name: rule.name, kind: rule.kind, projectIds: rule.projectIds, channelIds: rule.channelIds, schedule: rule.schedule, digestFormat: rule.digestFormat, template: rule.template, eventTypes: rule.eventTypes as EventType[], minSeverity: rule.minSeverity === 'UNKNOWN' ? null : rule.minSeverity, enabled: !rule.enabled },
         }),
       ),
     onSuccess: invalidate,
@@ -500,7 +500,7 @@ function RulesTab() {
                     ))}
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {rule.scheduleText} · 문구 {rule.template ? '직접 정함' : '기본'} · 심각도 {rule.minSeverity ? `${SEVERITY_LABEL[rule.minSeverity]} 이상 (미제공 포함)` : '제한 없음'} · 채널{' '}
+                    {rule.scheduleText}{rule.digestFormat === 'BRIEFING' && rule.schedule.type !== 'IMMEDIATE' ? ' 보안 브리핑' : ''} · 문구 {rule.template ? '직접 정함' : '기본'} · 심각도 {rule.minSeverity ? `${SEVERITY_LABEL[rule.minSeverity]} 이상 (미제공 포함)` : '제한 없음'} · 채널{' '}
                     {rule.channelIds.map(channelName).join(', ')}
                     {kind === 'PROJECT_IMPACT' ? ` · 프로젝트 ${rule.projectIds.length ? `${rule.projectIds.length}개 지정` : '전체'}` : ''}
                   </p>
@@ -559,6 +559,7 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
   const [eventTypes, setEventTypes] = useState<EventType[]>((rule?.eventTypes as EventType[]) ?? (kind === 'TECH_INTEREST' ? ['TECH_NEW_VULN', 'KEV_ADDED'] : ['PROJECT_NEW_MATCH', 'PRIORITY_RAISED', 'KEV_ADDED', 'INITIAL_SCAN_SUMMARY']));
   const [minSeverity, setMinSeverity] = useState<string>(rule?.minSeverity ?? (kind === 'TECH_INTEREST' ? 'HIGH' : ''));
   const [schedule, setSchedule] = useState<ScheduleValue>((rule?.schedule as ScheduleValue | undefined) ?? { type: 'IMMEDIATE' });
+  const [digestFormat, setDigestFormat] = useState<'LIST' | 'BRIEFING'>(rule?.digestFormat ?? 'LIST');
   const [template, setTemplate] = useState<string | null>(rule?.template ?? null);
   const [channelIds, setChannelIds] = useState<string[]>(rule?.channelIds ?? (channels[0] ? [channels[0].id] : []));
   const [projectIds, setProjectIds] = useState<string[]>(rule?.projectIds ?? []);
@@ -573,6 +574,7 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
         minSeverity: (minSeverity || null) as RuleInput['minSeverity'],
         projectIds: kind === 'PROJECT_IMPACT' ? projectIds : [],
         schedule,
+        digestFormat: schedule.type === 'IMMEDIATE' ? 'LIST' : digestFormat,
         template,
         channelIds,
         enabled: rule?.enabled ?? true,
@@ -639,6 +641,20 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
             </div>
             <SchedulePicker value={schedule} onChange={setSchedule} idPrefix="rule" />
           </div>
+          {schedule.type !== 'IMMEDIATE' ? (
+            <div className="space-y-2">
+              <Label htmlFor="rule-format">모아 받는 형식</Label>
+              <NativeSelect id="rule-format" value={digestFormat} onChange={(e) => setDigestFormat(e.target.value as 'LIST' | 'BRIEFING')}>
+                <option value="LIST">알림 목록 - 새 알림이 있을 때만 제목을 모아 보냄</option>
+                <option value="BRIEFING">보안 브리핑 - 받는 시각마다 현황을 정리해 보냄</option>
+              </NativeSelect>
+              {digestFormat === 'BRIEFING' ? (
+                <p className="text-xs text-muted-foreground">
+                  받는 시각에 따라 오전, 오후, 저녁 브리핑으로 보냅니다. 지난 브리핑 이후 새 이슈와 KEV 등재 여부, 프로젝트 영향, 재검사로 확인된 패치, 조치 완료로 바꿨지만 아직 재검사로 확인되지 않은 항목, 국내 보안공지를 담습니다. 새 이슈가 없어도 보냅니다.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <fieldset className="space-y-2">
             <legend className="font-medium">보낼 채널</legend>
             {channels.map((channel) => (

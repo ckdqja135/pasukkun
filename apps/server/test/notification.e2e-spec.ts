@@ -293,6 +293,22 @@ describe('알림: Outbox 중계, 중복 억제, 재시도', () => {
     expect(await deliveries.createDueDigests(tomorrow)).toBe(0);
   });
 
+  it('보안 브리핑은 새 항목이 없어도 정한 시각에 현황을 보낸다', async () => {
+    const tech = ((await user.get('/rules').expect(200)).body as Array<{ id: string; name: string }>).find((r) => r.name === 'tech')!;
+    const input = { name: 'tech', kind: 'TECH_INTEREST', eventTypes: ['TECH_NEW_VULN'], channelIds: [discordId] };
+    await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'IMMEDIATE' }, digestFormat: 'BRIEFING' }).expect(400);
+    await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'DAILY', times: ['09:00', '18:00'] }, digestFormat: 'BRIEFING' }).expect(200);
+    ctx.bots.discordSent.length = 0;
+    expect(await deliveries.createDueDigests(new Date(Date.now() + 2 * 86_400_000))).toBe(1);
+    await flush();
+    const embed = (discord()[0].body.embeds as Array<{ title: string; description: string; fields: Array<{ name: string }> }>)[0];
+    expect(embed.title).toMatch(/\[(새벽|오전|오후|저녁) 보안 브리핑\] - 새 이슈 없음/);
+    expect(embed.description).toContain('패치 0건');
+    expect(embed.fields.map((field) => field.name)).toContain('패치 확인 (지난 브리핑 이후 점검)');
+    await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'DAILY', times: ['09:00', '18:00'] } }).expect(200);
+    ctx.bots.discordSent.length = 0;
+  });
+
   it('규칙 유형에 맞지 않는 이벤트는 받을 수 없다', async () => {
     await user.post('/rules', { name: 'bad', kind: 'TECH_INTEREST', eventTypes: ['PROJECT_NEW_MATCH'], schedule: { type: 'IMMEDIATE' }, channelIds: [discordId] }).expect(400);
     await user.post('/rules', { name: 'bad', kind: 'PROJECT_IMPACT', eventTypes: ['TECH_NEW_VULN'], schedule: { type: 'IMMEDIATE' }, channelIds: [discordId] }).expect(400);

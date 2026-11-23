@@ -713,6 +713,8 @@ model SubscriptionRule {
   schedule     Json
   /// 사용자가 정한 알림 문구 틀 (null 이면 기본 형식)
   template     String?
+  /// 요약 형식: LIST (알림 제목 목록) | BRIEFING (보안 브리핑, 새 항목이 없어도 매번 보냄)
+  digestFormat String    @default("LIST")
   /// 마지막으로 요약을 보낸 시각
   lastDigestAt DateTime?
   enabled      Boolean   @default(true)
