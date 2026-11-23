@@ -119,6 +119,8 @@ export class FindingListItemDto {
   fixedVersion: string | null;
   remediationStatus: 'UNREVIEWED' | 'IN_REVIEW' | 'PLANNED' | 'RISK_ACCEPTED' | 'DONE';
   reviewDueAt: string | null;
+  /** 조치 예정일 (조치 예정 상태일 때) */
+  plannedFixAt: string | null;
   needsRecheck: boolean;
   recheckReason: string | null;
   isDirect: boolean;
@@ -216,4 +218,9 @@ export class UpdateStatusDto {
   @IsOptional()
   @IsISO8601()
   reviewDueAt?: string;
+
+  /** 조치 예정일 (ISO 날짜). 조치 예정일 때만 쓰고, 비우면 날짜 없이 둔다 */
+  @IsOptional()
+  @IsISO8601()
+  plannedFixAt?: string;
 }

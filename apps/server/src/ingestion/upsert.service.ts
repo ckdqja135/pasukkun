@@ -429,6 +429,18 @@ export class VulnerabilityUpsertService {
         },
       });
       if (clash) {
+        // 남는 쪽이 아직 미검토면, 사라지는 쪽에서 정한 조치 상태(위험 수용 사유·기한, 조치 예정일)를 옮긴다.
+        if (clash.remediationStatus === 'UNREVIEWED' && finding.remediationStatus !== 'UNREVIEWED') {
+          await tx.finding.update({
+            where: { id: clash.id },
+            data: {
+              remediationStatus: finding.remediationStatus,
+              acceptReason: finding.acceptReason,
+              reviewDueAt: finding.reviewDueAt,
+              plannedFixAt: finding.plannedFixAt,
+            },
+          });
+        }
         await tx.findingReview.updateMany({ where: { findingId: finding.id }, data: { findingId: clash.id } });
         await tx.findingStatusHistory.updateMany({ where: { findingId: finding.id }, data: { findingId: clash.id } });
         await tx.finding.delete({ where: { id: finding.id } });

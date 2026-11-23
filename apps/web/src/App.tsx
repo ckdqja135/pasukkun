@@ -14,6 +14,8 @@ import { ProjectDetailPage } from '@/pages/project-detail';
 import { ProjectsPage } from '@/pages/projects';
 import { StatusPage } from '@/pages/status';
 import { VulnerabilityDetailPage } from '@/pages/vulnerability-detail';
+import { CalendarPage } from '@/pages/calendar';
+import { PackagesPage } from '@/pages/packages';
 
 export function App() {
   const me = useMe();
@@ -37,6 +39,8 @@ export function App() {
         <Route path="projects/:id" element={<ProjectDetailPage />} />
         <Route path="findings" element={<FindingsPage />} />
         <Route path="findings/:id" element={<FindingDetailPage />} />
+        <Route path="packages" element={<PackagesPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="interests" element={<InterestsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="deliveries" element={<DeliveriesPage />} />

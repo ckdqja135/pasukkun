@@ -25,14 +25,18 @@ This guide explains how to use each menu. The app's screens are in Korean, so on
 
 | Menu | What it does |
 |-|-|
-| 대시보드 (Dashboard) | Items to look at now, recent advisories, and data collection status at a glance |
+| 대시보드 (Dashboard) | Items to look at now, recent advisories, Korean public notices, and data collection status at a glance |
+| 비상 달력 (Emergency calendar) | Publication dates, KEV deadlines, review dates, and planned fix dates on a monthly calendar |
 | 취약점 피드 (Vulnerability feed) | Search and filter all collected vulnerabilities |
 | 프로젝트 (Projects) | Import or register projects and scan their dependencies |
 | 분석 결과 (Findings) | Impact analysis results across all projects |
+| 패키지별 조치 (Package remediation) | Which package upgrade resolves the most findings |
 | 관심 기술 (Technologies of interest) | Save the technologies you care about |
 | 알림 설정 (Notification settings) | Connect channels and decide what you receive and when |
 | 발송 이력 (Delivery history) | Check whether notifications were actually sent |
 | 수집 상태 (Collection status) | Check that vulnerability data is coming in correctly |
+
+At the top of every page there is a search box for CVE IDs, packages, and keywords (results open in the vulnerability feed), and a collection status pill showing whether collection is healthy and when it last succeeded. Click the pill to open **수집 상태**.
 
 At the bottom of the menu you can see your GitHub username, switch **다크/라이트** (dark/light), and **로그아웃** (log out).
 
@@ -53,7 +57,21 @@ At the bottom of the menu you can see your GitHub username, switch **다크/라�
 - **긴급 검토 항목** (Urgent items): what to look at first.
 - **최근 공개된 취약점** (Recently published): recent advisories matching your saved technologies. This means the advisory is related, not that your project is affected. If the list is empty, check how your technology groups are combined (see [Technologies of interest](#관심-기술-technologies-of-interest)).
 - **내 프로젝트** (My projects): latest scan status and urgent/open counts per project.
+- **국내 보안공지** (Korean security notices): the latest KISA 보호나라 security notices. They have no affected version data, so they are not matched against your projects; open them and check yourself.
 - **데이터 수집 상태** (Data collection status): each source shows normal / collecting / delayed / failed.
+
+## 비상 달력 (Emergency calendar)
+
+A monthly view of what was published and what is due.
+
+- Move between months with the arrows, or jump back with **오늘** (Today).
+- Choose a view at the top right:
+  - **내 프로젝트 영향** (My project impact): vulnerabilities affecting your projects on their publication date, CISA KEV action deadlines for them, risk acceptance review dates, and planned fix dates.
+  - **중요 이슈** (Important issues): vulnerabilities newly added to CISA KEV (confirmed exploited), critical advisories for your saved technologies, all KEV deadlines, and KISA security notices.
+  - **관심 기술** (Technologies of interest): advisories matching your saved technologies.
+- Colors: 긴급 (urgent), 높음 (high), 보통 (medium), KEV 조치 기한 (KEV deadline, black), 조치 예정 (planned fix, blue), 재검토 기한 (review date, purple), 국내 보안공지 (Korean notice, gray). The legend under the toolbar shows the colors used in the current view.
+- Click an item to open it. When a day has more than three items, click **+N건** to see them all.
+- To put a fix on the calendar, set a **조치 예정일** (planned fix date) when you change a finding's status to 조치 예정 (planned).
 
 ## 취약점 피드 (Vulnerability feed)
 
@@ -204,8 +222,20 @@ Click an item.
 
 **Remediation status**
 - Choose unreviewed / in review / planned / risk accepted / done and click **상태 변경** (Change status).
+- **조치 예정** (Planned) can have an optional **조치 예정일** (planned fix date), which appears on the emergency calendar.
 - **위험 수용** (Risk accepted) requires a reason and a date to review again.
 - Marking "done" does not change the version match. Upgrade the package and scan the new lockfile (projects imported from GitHub do this automatically); resolved items then show as no longer detected.
+
+## 패키지별 조치 (Package remediation)
+
+Affected findings grouped by package and installed version, so you can start with the upgrade that clears the most.
+
+- Each row shows the package, **설치 버전 → 올릴 버전** (installed version → version to upgrade to), how many findings that upgrade resolves, the affected projects, and the highest priority. A **KEV** label means at least one of them is known to be exploited.
+- The version to upgrade to is the highest fixed version confirmed among that row's findings. If a fix exists only in a newer release line, check compatibility before upgrading.
+- **패치 미확인** (Patch not confirmed) counts findings with no fixed version information; upgrading may not resolve them.
+- Click a row to see its findings and open each one.
+- Narrow down with the project selector at the top right.
+- After upgrading, scan the new lockfile (automatic for projects imported from GitHub) to see the findings resolved.
 
 ## 관심 기술 (Technologies of interest)
 
@@ -337,7 +367,8 @@ Rarely, the same notification may arrive twice.
 
 ## 수집 상태 (Collection status)
 
-- **데이터 소스** (Data sources): role, status (normal / collecting / delayed / failed), last success, and interval per source. A failed collection is shown as failed, never as "no vulnerabilities".
+- A summary line at the top shows the last collection time and how many sources are normal, failing, or delayed.
+- **데이터 소스** (Data sources): role, status (normal / collecting / delayed / failed), last success, interval, **최근 신규** (items added or changed in the last run), and **누적 항목** (items stored from that source). A failed collection is shown as failed, never as "no vulnerabilities".
 - **최근 수집 실행** (Recent runs): result and number of items for each run.
 - **대응 우선순위 규칙** (Priority rules): every rule and threshold used for priority.
 
@@ -348,6 +379,7 @@ Rarely, the same notification may arrive twice.
 | NVD | CVE details, CVSS scores, affected products |
 | CISA KEV | Vulnerabilities confirmed to be exploited |
 | FIRST EPSS | Estimated probability of exploitation activity in the next 30 days |
+| KISA 보호나라 | Korean public security notices (shown as related notices only, not matched by version) |
 
 ## Good to know
 

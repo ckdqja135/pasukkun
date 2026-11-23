@@ -711,6 +711,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/remediation/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 패키지별 조치: 어떤 패키지를 어느 버전으로 올리면 몇 건이 해소되는지 */
+        get: operations["InsightController_packages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 비상 달력: 공개일, KEV 조치 기한, 재검토 기한, 조치 예정일, 국내 공지 */
+        get: operations["InsightController_calendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 국내 공공 보안공지 (KISA 보호나라) 최근 목록 */
+        get: operations["InsightController_notices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/summary": {
         parameters: {
             query?: never;
@@ -727,7 +778,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/status/ingestion": {
+    "/api/v1/status/summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -735,6 +786,22 @@ export interface paths {
             cookie?: never;
         };
         /** 데이터 소스별 수집 상태: 마지막 성공 시각, 실패, 지연 여부 */
+        get: operations["StatusController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/status/ingestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
         get: operations["StatusController_ingestion"];
         put?: never;
         post?: never;
@@ -1208,6 +1275,8 @@ export interface components {
             /** @enum {string} */
             remediationStatus: "UNREVIEWED" | "IN_REVIEW" | "PLANNED" | "RISK_ACCEPTED" | "DONE";
             reviewDueAt: string | null;
+            /** @description 조치 예정일 (조치 예정 상태일 때) */
+            plannedFixAt: string | null;
             needsRecheck: boolean;
             recheckReason: string | null;
             isDirect: boolean;
@@ -1281,6 +1350,8 @@ export interface components {
             /** @enum {string} */
             remediationStatus: "UNREVIEWED" | "IN_REVIEW" | "PLANNED" | "RISK_ACCEPTED" | "DONE";
             reviewDueAt: string | null;
+            /** @description 조치 예정일 (조치 예정 상태일 때) */
+            plannedFixAt: string | null;
             needsRecheck: boolean;
             recheckReason: string | null;
             isDirect: boolean;
@@ -1324,6 +1395,8 @@ export interface components {
             reason?: string;
             /** @description 위험 수용 재검토 기한 (ISO 날짜). 위험 수용일 때 필수 */
             reviewDueAt?: string;
+            /** @description 조치 예정일 (ISO 날짜). 조치 예정일 때만 쓰고, 비우면 날짜 없이 둔다 */
+            plannedFixAt?: string;
         };
         ChannelProvidersDto: {
             /** @description 서비스 텔레그램 봇이 설정되어 있는지 */
@@ -1574,6 +1647,77 @@ export interface components {
             created: components["schemas"]["GithubImportedProjectDto"][];
             skipped: components["schemas"]["GithubSkippedDto"][];
         };
+        ProjectRefDto: {
+            id: string;
+            name: string;
+        };
+        PackageFindingDto: {
+            findingId: string;
+            vulnerabilityId: string;
+            title: string;
+            projectId: string;
+            projectName: string;
+            /** @enum {string} */
+            priority: "HIGH" | "MEDIUM" | "LOW" | "NEEDS_CHECK" | "URGENT";
+            fixedVersion: string | null;
+            kev: boolean;
+        };
+        PackageRemediationDto: {
+            packageName: string;
+            installedVersion: string;
+            /** @description 이 버전에서 확인된 수정 버전 중 가장 높은 것. 올리면 수정 버전이 있는 항목이 모두 해소된다. */
+            targetVersion: string | null;
+            findingCount: number;
+            /** @description 수정 버전이 확인되지 않은 항목 수 (올려도 해소되는지 알 수 없음) */
+            withoutFixCount: number;
+            projects: components["schemas"]["ProjectRefDto"][];
+            /** @enum {string} */
+            topPriority: "HIGH" | "MEDIUM" | "LOW" | "NEEDS_CHECK" | "URGENT";
+            hasKev: boolean;
+            findings: components["schemas"]["PackageFindingDto"][];
+        };
+        PackageRemediationListDto: {
+            items: components["schemas"]["PackageRemediationDto"][];
+            /** @description 항목이 너무 많아 일부만 묶었는지 */
+            truncated: boolean;
+        };
+        CalendarEventDto: {
+            id: string;
+            /** @description YYYY-MM-DD (사용자 시간대 기준) */
+            date: string;
+            /** @enum {string} */
+            kind: "KEV_ADDED" | "PUBLISHED" | "KEV_DUE" | "REVIEW_DUE" | "PLANNED_FIX" | "NOTICE";
+            /**
+             * @description 표시 색: 긴급 / 높음 / 보통 / KEV 기한 / 조치 예정 / 재검토 / 국내 공지
+             * @enum {string}
+             */
+            tone: "HIGH" | "KEV" | "URGENT" | "NOTICE" | "NORMAL" | "PLAN" | "REVIEW";
+            title: string;
+            detail: string | null;
+            /** @description 앱 안 경로 또는 외부 주소 */
+            href: string;
+            external: boolean;
+        };
+        CalendarDto: {
+            from: string;
+            to: string;
+            /** @enum {string} */
+            view: "PROJECT" | "IMPORTANT" | "INTEREST";
+            events: components["schemas"]["CalendarEventDto"][];
+            /** @description 너무 많아 일부만 담았는지 */
+            truncated: boolean;
+            /** @description 관심 기술 보기인데 저장된 관심 기술이 없음 */
+            needsInterests: boolean;
+        };
+        PublicNoticeDto: {
+            id: string;
+            source: string;
+            title: string;
+            url: string;
+            publishedAt: string;
+            /** @description 게시 날짜 (한국 날짜, YYYY-MM-DD) */
+            publishedDate: string;
+        };
         DashboardCardDto: {
             key: string;
             label: string;
@@ -1613,6 +1757,10 @@ export interface components {
             lagging: boolean;
             /** @description 지금 수집이 진행 중인지 */
             running: boolean;
+            /** @description 마지막으로 끝난 수집에서 새로 들어오거나 바뀐 항목 수 */
+            recentChanged: number | null;
+            /** @description 이 출처에서 받아 둔 항목 수 */
+            totalItems: number;
         };
         DashboardDto: {
             cards: components["schemas"]["DashboardCardDto"][];
@@ -1626,6 +1774,15 @@ export interface components {
             projects: components["schemas"]["DashboardProjectDto"][];
             sources: components["schemas"]["SourceStatusDto"][];
             activeScans: number;
+        };
+        StatusSummaryDto: {
+            /** @description 정기 수집 출처 수 (OSV 제외) */
+            total: number;
+            failing: number;
+            /** @description 마지막 성공이 주기의 2배보다 오래된 출처 (실패로 기록되지 않았어도 멈췄을 수 있음) */
+            stale: number;
+            neverRun: number;
+            lastSuccessAt: string | null;
         };
         IngestionRunDto: {
             id: string;
@@ -2860,6 +3017,70 @@ export interface operations {
             };
         };
     };
+    InsightController_packages: {
+        parameters: {
+            query?: {
+                projectId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageRemediationListDto"];
+                };
+            };
+        };
+    };
+    InsightController_calendar: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                /** @description PROJECT: 내 프로젝트 영향 / IMPORTANT: 중요 이슈(KEV 신규 등재·기한, 관심 기술의 치명적 공지, 국내 공지) / INTEREST: 관심 기술 */
+                view: "PROJECT" | "IMPORTANT" | "INTEREST";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarDto"];
+                };
+            };
+        };
+    };
+    InsightController_notices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicNoticeDto"][];
+                };
+            };
+        };
+    };
     StatusController_dashboard: {
         parameters: {
             query?: never;
@@ -2875,6 +3096,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardDto"];
+                };
+            };
+        };
+    };
+    StatusController_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusSummaryDto"];
                 };
             };
         };

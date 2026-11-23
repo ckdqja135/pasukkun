@@ -1,3 +1,4 @@
+import type { SourceKey } from '../generated/prisma/client.js';
 import { Inject, Injectable } from '@nestjs/common';
 import type { FindingQueryDto } from '../assessment/finding.dto.js';
 import { FindingService } from '../assessment/finding.service.js';
@@ -10,7 +11,7 @@ import { IngestionService } from '../ingestion/ingestion.service.js';
 import { ProjectService } from '../project/project.service.js';
 import type { VulnerabilityQueryDto } from '../vulnerability/vulnerability.dto.js';
 import { VulnerabilityService } from '../vulnerability/vulnerability.service.js';
-import type { DashboardCardDto, DashboardDto, IngestionStatusDto, PriorityRulesDto, SourceStatusDto } from './status.dto.js';
+import type { DashboardCardDto, DashboardDto, IngestionStatusDto, PriorityRulesDto, SourceStatusDto, StatusSummaryDto } from './status.dto.js';
 
 const SOURCE_ROLES: Record<string, string> = {
   GHSA: 'GitHub Advisory Database - 오픈소스 패키지 보안 공지와 영향 버전',
@@ -18,6 +19,7 @@ const SOURCE_ROLES: Record<string, string> = {
   NVD: 'NVD - CVE 정보, CVSS, 제품(CPE) 정보 보완',
   KEV: 'CISA KEV - 실제 악용이 확인된 취약점 여부',
   EPSS: 'FIRST EPSS - 30일 내 악용 활동 관측 확률 추정',
+  KISA: 'KISA 보호나라 보안공지 - 국내 공공 보안 권고 (관련 공지로만 표시)',
 };
 
 const OPEN_STATUSES = ['UNREVIEWED', 'IN_REVIEW', 'PLANNED'] as const;
@@ -37,13 +39,42 @@ export class StatusService {
   async sources(): Promise<SourceStatusDto[]> {
     const active = await this.prisma.ingestionRun.findMany({ where: { status: 'RUNNING' }, select: { source: true }, distinct: ['source'] });
     const running = new Set(active.map((run) => run.source as string));
-    return (await this.ingestion.status()).map((source) => ({
+    const views = await this.ingestion.status();
+    // 출처마다 마지막으로 끝난 수집 1건만 읽는다 (source, startedAt 인덱스 사용).
+    const lastRuns = await Promise.all(
+      views.map((view) =>
+        this.prisma.ingestionRun.findFirst({ where: { source: view.key as SourceKey, status: { not: 'RUNNING' } }, orderBy: { startedAt: 'desc' }, select: { source: true, changed: true } }),
+      ),
+    );
+    const recent = new Map(lastRuns.filter((run) => run !== null).map((run) => [run.source as string, run.changed]));
+    const [ghsa, nvd, osv, kev, epss, kisa] = await Promise.all([
+      this.prisma.sourceRecord.count({ where: { source: 'GHSA' } }),
+      this.prisma.sourceRecord.count({ where: { source: 'NVD' } }),
+      this.prisma.sourceRecord.count({ where: { source: 'OSV' } }),
+      this.prisma.kevEntry.count(),
+      this.prisma.vulnerability.count({ where: { epssScore: { not: null } } }),
+      this.prisma.publicNotice.count({ where: { source: 'KISA' } }),
+    ]);
+    const totals: Record<string, number> = { GHSA: ghsa, NVD: nvd, OSV: osv, KEV: kev, EPSS: epss, KISA: kisa };
+    return views.map((source) => ({
       ...source,
       running: running.has(source.key),
+      recentChanged: recent.get(source.key) ?? null,
+      totalItems: totals[source.key] ?? 0,
       role: SOURCE_ROLES[source.key] ?? source.key,
       lastAttemptAt: source.lastAttemptAt?.toISOString() ?? null,
       lastSuccessAt: source.lastSuccessAt?.toISOString() ?? null,
     }));
+  }
+
+  /** 상단 표시용 가벼운 요약: 정기 수집 출처의 실패·지연·수집 전 수와 마지막 성공 시각 */
+  async summary(): Promise<StatusSummaryDto> {
+    const sources = (await this.ingestion.status()).filter((source) => source.key !== 'OSV');
+    const failing = sources.filter((source) => source.status === 'FAILING').length;
+    const neverRun = sources.filter((source) => source.status === 'NEVER_RUN').length;
+    const stale = sources.filter((source) => source.status === 'OK' && source.lagging).length;
+    const latest = sources.map((source) => source.lastSuccessAt).filter((value): value is Date => value !== null).sort((a, b) => b.getTime() - a.getTime())[0];
+    return { total: sources.length, failing, stale, neverRun, lastSuccessAt: latest?.toISOString() ?? null };
   }
 
   async ingestionStatus(): Promise<IngestionStatusDto> {

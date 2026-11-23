@@ -162,7 +162,7 @@ export class ScanService {
       });
 
       const freshness = Object.fromEntries(
-        (await this.ingestion.status()).map((source) => [
+        (await this.ingestion.status()).filter((source) => source.key !== 'KISA').map((source) => [
           source.key,
           { status: source.status, lastSuccessAt: source.lastSuccessAt?.toISOString() ?? null, lagging: source.lagging },
         ]),

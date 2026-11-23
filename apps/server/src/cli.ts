@@ -10,7 +10,7 @@ import { PrismaService } from './db/prisma.service.js';
 
 /**
  * 운영 보조 명령.
- *   node dist/cli.js ingest <GHSA|NVD|KEV|EPSS>   소스 하나를 지금 수집
+ *   node dist/cli.js ingest <GHSA|NVD|KEV|EPSS|KISA>   소스 하나를 지금 수집
  *   node dist/cli.js status                        소스별 수집 상태
  *   node dist/cli.js retag                         기술 태그 전체 재계산
  *   node dist/cli.js user:list                      계정 목록 (계정은 GitHub 로그인으로만 만들어진다)
@@ -40,7 +40,7 @@ try {
     const ingestion = app.get(IngestionService);
     await app.get(CatalogService).syncCatalog();
     await ingestion.ensureSources();
-    if (command === 'ingest' && ['GHSA', 'NVD', 'KEV', 'EPSS'].includes(argument ?? '')) {
+    if (command === 'ingest' && ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA'].includes(argument ?? '')) {
       await ingestion.run(argument as ScheduledSource);
     } else if (command === 'status') {
       console.table(
@@ -55,7 +55,7 @@ try {
     } else if (command === 'retag') {
       console.log(`재계산한 취약점: ${await app.get(VulnerabilityUpsertService).retagAll()}`);
     } else {
-      console.error('사용법: cli.js ingest <GHSA|NVD|KEV|EPSS> | status | retag | user:list');
+      console.error('사용법: cli.js ingest <GHSA|NVD|KEV|EPSS|KISA> | status | retag | user:list');
       process.exitCode = 2;
     }
   }

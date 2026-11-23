@@ -222,6 +222,22 @@ enum SourceKey {
   NVD
   KEV
   EPSS
+  KISA
+}
+
+/// 국내 공공 보안공지 (KISA 보호나라). 영향 버전 정보가 없으므로 버전 매칭에 쓰지 않고 목록·달력에만 보여준다.
+model PublicNotice {
+  id          String    @id @default(cuid())
+  source      SourceKey
+  /// 출처의 게시물 번호
+  externalId  String
+  title       String
+  url         String
+  publishedAt DateTime
+  firstSeenAt DateTime  @default(now())
+
+  @@unique([source, externalId])
+  @@index([publishedAt])
 }
 
 model SourceRecord {
@@ -576,6 +592,8 @@ model Finding {
   remediationStatus RemediationStatus @default(UNREVIEWED)
   acceptReason      String?
   reviewDueAt       DateTime?
+  /// 조치 예정일 (조치 예정 상태에서 정한 날짜, 비상 달력에 표시)
+  plannedFixAt      DateTime?
   needsRecheck      Boolean           @default(false)
   recheckReason     String?
   /// 현재 구성에서 더 이상 검출되지 않게 된 시각 (재검사로만 설정)

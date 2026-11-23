@@ -1,6 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Activity, Bell, FolderKanban, LayoutDashboard, ListChecks, LogOut, Moon, Send, ShieldAlert, Sparkles, Sun } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Activity, Bell, CalendarDays, FolderKanban, LayoutDashboard, ListChecks, LogOut, Moon, Package, Search, Send, ShieldAlert, Sparkles, Sun } from 'lucide-react';
+import { useState } from 'react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router';
+import { Input } from '@/components/ui/input';
+import { formatRelative } from '@/lib/labels';
 import { Button } from '@/components/ui/button';
 import { api, unwrap } from '@/lib/api';
 import { ME_KEY, type Me } from '@/lib/auth';
@@ -9,14 +12,59 @@ import { cn } from '@/lib/utils';
 
 const NAV = [
   { to: '/', label: '대시보드', icon: LayoutDashboard, end: true },
+  { to: '/calendar', label: '비상 달력', icon: CalendarDays },
   { to: '/vulnerabilities', label: '취약점 피드', icon: ShieldAlert },
   { to: '/projects', label: '프로젝트', icon: FolderKanban },
   { to: '/findings', label: '분석 결과', icon: ListChecks },
+  { to: '/packages', label: '패키지별 조치', icon: Package },
   { to: '/interests', label: '관심 기술', icon: Sparkles },
   { to: '/notifications', label: '알림 설정', icon: Bell },
   { to: '/deliveries', label: '발송 이력', icon: Send },
   { to: '/status', label: '수집 상태', icon: Activity },
 ];
+
+/** 상단: 전체 검색과 수집 상태 요약 */
+function TopBar() {
+  const navigate = useNavigate();
+  const [text, setText] = useState('');
+  const status = useQuery({ queryKey: ['status-summary'], queryFn: () => unwrap(api.GET('/api/v1/status/summary')), refetchInterval: 60_000 });
+  const summary = status.data;
+  // 실패로 기록되지 않았어도 오래 성공하지 못했으면(워커가 멈춘 경우 등) 정상으로 보이지 않게 한다.
+  const tone = !summary ? 'bg-muted-foreground' : summary.failing > 0 ? 'bg-red-500' : summary.stale + summary.neverRun > 0 ? 'bg-amber-500' : 'bg-green-500';
+  const label = !summary
+    ? ''
+    : summary.failing > 0
+      ? `수집 실패 ${summary.failing}곳`
+      : summary.stale > 0
+        ? `수집 지연 ${summary.stale}곳`
+        : summary.neverRun > 0
+          ? `수집 전 ${summary.neverRun}곳`
+          : '수집 정상';
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <form
+        role="search"
+        className="relative w-full max-w-md"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const q = text.trim();
+          // 저장된 관심 기술 필터 없이 전체에서 찾는다 (tech 를 빈 값으로 명시).
+          if (q) void navigate(`/vulnerabilities?tech=&q=${encodeURIComponent(q)}`);
+        }}
+      >
+        <Search aria-hidden className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+        <Input className="pl-8" value={text} onChange={(event) => setText(event.target.value)} placeholder="CVE 번호, 패키지, 키워드로 검색" aria-label="취약점 검색" />
+      </form>
+      {summary ? (
+        <Link to="/status" className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs hover:bg-muted">
+          <span aria-hidden className={cn('size-2 rounded-full', tone)} />
+          {label}
+          {summary.lastSuccessAt ? <span className="text-muted-foreground">· 마지막 성공 {formatRelative(summary.lastSuccessAt)}</span> : null}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
 
 export function AppShell({ me }: { me: Me }) {
   const { theme, toggle } = useTheme();
@@ -76,6 +124,7 @@ export function AppShell({ me }: { me: Me }) {
       </aside>
       <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">
         <div className="mx-auto max-w-[1400px] space-y-6 p-6 max-md:p-4">
+          <TopBar />
           <Outlet />
         </div>
       </main>

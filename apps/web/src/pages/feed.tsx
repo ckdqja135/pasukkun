@@ -39,6 +39,9 @@ export function FeedPage() {
   const ingestion = useIngestionStatus();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [searchText, setSearchText] = useState(params.get('q') ?? '');
+  const urlQuery = params.get('q') ?? '';
+  // 상단 검색으로 같은 화면에 다시 들어오면 검색어를 맞춘다.
+  useEffect(() => setSearchText(urlQuery), [urlQuery]);
 
   // 화면 필터는 URL 에만 있는 임시 상태다. 처음 들어올 때만 저장된 관심 기술로 채운다.
   const techInitialized = params.has('tech');
@@ -118,7 +121,8 @@ export function FeedPage() {
   const techById = new Map((technologies.data ?? []).map((t) => [t.id, t]));
   const saved = interests.data?.technologyIds ?? [];
   const differsFromSaved = techInitialized && !sameSet(tech, saved);
-  const feedSources = (ingestion.data?.sources ?? []).filter((s) => s.key !== 'OSV');
+  // OSV(검사 때 조회)와 KISA(국내 공지, 피드 목록에 쓰지 않음)는 피드 완전성과 무관하다.
+  const feedSources = (ingestion.data?.sources ?? []).filter((s) => s.key !== 'OSV' && s.key !== 'KISA');
   const initializing = feedSources.filter((s) => s.status === 'NEVER_RUN');
   const lagging = feedSources.filter((s) => s.status !== 'NEVER_RUN' && (s.lagging || s.status === 'FAILING'));
 

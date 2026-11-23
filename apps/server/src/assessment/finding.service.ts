@@ -108,6 +108,7 @@ export class FindingService {
       fixedVersion: row.fixedVersion,
       remediationStatus: row.remediationStatus,
       reviewDueAt: row.reviewDueAt?.toISOString() ?? null,
+      plannedFixAt: row.plannedFixAt?.toISOString() ?? null,
       needsRecheck: row.needsRecheck,
       recheckReason: row.recheckReason,
       isDirect: evidence.isDirect ?? false,
@@ -231,6 +232,19 @@ export class FindingService {
         throw new BadRequestException('재검토 기한은 오늘 이후의 날짜여야 합니다.');
       }
     }
+    let plannedFixAt: Date | null = null;
+    if (dto.status === 'PLANNED' && dto.plannedFixAt) {
+      plannedFixAt = new Date(dto.plannedFixAt);
+      if (Number.isNaN(plannedFixAt.getTime())) throw new BadRequestException('조치 예정일이 올바르지 않습니다.');
+    }
+    // 조치 예정일이 바뀌면 이력에 날짜를 남긴다 (상태가 그대로여도 무엇이 바뀌었는지 알 수 있게).
+    const settings = await this.prisma.userSettings.findUnique({ where: { userId: user.id }, select: { timezone: true } });
+    const day = (value: Date | null) =>
+      value ? new Intl.DateTimeFormat('en-CA', { timeZone: settings?.timezone || 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(value) : null;
+    const before = finding.remediationStatus === 'PLANNED' ? day(finding.plannedFixAt) : null;
+    const after = day(plannedFixAt);
+    const planNote = dto.status === 'PLANNED' && before !== after ? `조치 예정일 ${before ?? '없음'} → ${after ?? '없음'}` : '';
+    const reasonText = [dto.reason?.trim() ?? '', planNote].filter(Boolean).join(' · ');
     await this.prisma.$transaction([
       this.prisma.findingStatusHistory.create({
         data: {
@@ -239,7 +253,7 @@ export class FindingService {
           toStatus: dto.status,
           authorId: user.id,
           authorName: user.login,
-          reason: dto.reason?.trim() ?? '',
+          reason: reasonText,
         },
       }),
       this.prisma.finding.update({
@@ -248,6 +262,7 @@ export class FindingService {
           remediationStatus: dto.status,
           acceptReason: dto.status === 'RISK_ACCEPTED' ? dto.reason!.trim() : null,
           reviewDueAt,
+          plannedFixAt,
         },
       }),
     ]);

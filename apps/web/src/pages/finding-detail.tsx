@@ -56,6 +56,8 @@ export function FindingDetailPage() {
     void queryClient.invalidateQueries({ queryKey: ['findings'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     void queryClient.invalidateQueries({ queryKey: ['project', data.projectId] });
+    void queryClient.invalidateQueries({ queryKey: ['calendar'] });
+    void queryClient.invalidateQueries({ queryKey: ['remediation-packages'] });
   };
 
   if (detail.isError) return <ErrorState error={detail.error} onRetry={() => detail.refetch()} />;
@@ -371,13 +373,20 @@ function ReviewCard({ finding, evidence, onSaved }: { finding: Detail; evidence:
 function StatusCard({ finding, onSaved }: { finding: Detail; onSaved: (data: Detail) => void }) {
   const [status, setStatus] = useState<Status>(finding.remediationStatus);
   const [reason, setReason] = useState('');
-  const [due, setDue] = useState(finding.reviewDueAt?.slice(0, 10) ?? '');
+  const [due, setDue] = useState(localYmd(finding.reviewDueAt));
+  const savedPlan = localYmd(finding.plannedFixAt);
+  const [plan, setPlan] = useState(savedPlan);
   const save = useMutation({
     mutationFn: () =>
       unwrap(
         api.PATCH('/api/v1/findings/{id}/status', {
           params: { path: { id: finding.id } },
-          body: { status, reason: reason || undefined, reviewDueAt: status === 'RISK_ACCEPTED' && due ? new Date(`${due}T23:59:59`).toISOString() : undefined },
+          body: {
+            status,
+            reason: reason || undefined,
+            reviewDueAt: status === 'RISK_ACCEPTED' && due ? new Date(`${due}T23:59:59`).toISOString() : undefined,
+            plannedFixAt: status === 'PLANNED' && plan ? new Date(`${plan}T12:00:00`).toISOString() : undefined,
+          },
         }),
       ),
     onSuccess: (data) => {
@@ -421,16 +430,37 @@ function StatusCard({ finding, onSaved }: { finding: Detail; onSaved: (data: Det
               <Input id="due" type="date" required min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)} value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
           ) : null}
+          {status === 'PLANNED' ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="plan">조치 예정일 (선택)</Label>
+              <Input id="plan" type="date" value={plan} onChange={(e) => setPlan(e.target.value)} />
+              <p className="text-xs text-muted-foreground">정하면 비상 달력에 표시됩니다.</p>
+            </div>
+          ) : null}
+          {finding.remediationStatus === 'PLANNED' && finding.plannedFixAt ? (
+            <p className="text-xs text-muted-foreground">현재 조치 예정일: {formatDate(finding.plannedFixAt)}</p>
+          ) : null}
           {finding.remediationStatus === 'RISK_ACCEPTED' && finding.acceptReason ? (
             <p className="text-xs text-muted-foreground">
               현재 수용 사유: {finding.acceptReason} · 재검토 {formatDate(finding.reviewDueAt)}
             </p>
           ) : null}
-          <Button type="submit" variant="outline" disabled={save.isPending || (status === finding.remediationStatus && !accepting) || (accepting && (!reason.trim() || !due))}>
+          <Button type="submit" variant="outline" disabled={
+              save.isPending ||
+              (status === finding.remediationStatus && !accepting && !(status === 'PLANNED' && plan !== savedPlan)) ||
+              (accepting && (!reason.trim() || !due))
+            }>
             상태 변경
           </Button>
         </form>
       </CardContent>
     </Card>
   );
+}
+
+/** 저장된 시각을 이 브라우저의 날짜(YYYY-MM-DD)로. UTC 로 자르면 시간대에 따라 하루 어긋난다. */
+function localYmd(value: string | null | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

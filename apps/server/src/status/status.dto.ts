@@ -20,6 +20,10 @@ export class SourceStatusDto {
   lagging: boolean;
   /** 지금 수집이 진행 중인지 */
   running: boolean;
+  /** 마지막으로 끝난 수집에서 새로 들어오거나 바뀐 항목 수 */
+  recentChanged: number | null;
+  /** 이 출처에서 받아 둔 항목 수 */
+  totalItems: number;
 }
 
 export class IngestionRunDto {
@@ -94,4 +98,14 @@ export class PriorityRulesDto {
   adjustments: PriorityRuleDto[];
   epssThreshold: number;
   notes: string[];
+}
+
+export class StatusSummaryDto {
+  /** 정기 수집 출처 수 (OSV 제외) */
+  total: number;
+  failing: number;
+  /** 마지막 성공이 주기의 2배보다 오래된 출처 (실패로 기록되지 않았어도 멈췄을 수 있음) */
+  stale: number;
+  neverRun: number;
+  lastSuccessAt: string | null;
 }

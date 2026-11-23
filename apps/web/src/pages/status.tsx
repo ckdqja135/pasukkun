@@ -28,7 +28,8 @@ export function StatusPage() {
           <CardTitle>데이터 소스</CardTitle>
           <CardDescription>소스 수집이 실패하거나 지연되면 그 사실을 그대로 표시합니다. 수집 실패를 '취약점 없음'으로 처리하지 않습니다.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <SourceSummary sources={status.data.sources} />
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
@@ -38,6 +39,8 @@ export function StatusPage() {
                   <TableHead className="w-28">상태</TableHead>
                   <TableHead className="w-40">마지막 성공</TableHead>
                   <TableHead className="w-28">주기</TableHead>
+                  <TableHead className="w-24 text-right">최근 신규</TableHead>
+                  <TableHead className="w-24 text-right">누적 항목</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -58,6 +61,8 @@ export function StatusPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {source.key === 'OSV' ? '검사 시 조회' : source.intervalMinutes >= 60 ? `${source.intervalMinutes / 60}시간` : `${source.intervalMinutes}분`}
                     </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{source.recentChanged === null ? '-' : source.recentChanged.toLocaleString('ko-KR')}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{source.totalItems.toLocaleString('ko-KR')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -158,5 +163,22 @@ export function StatusPage() {
         가능성 분석, AI 요약은 제공하지 않습니다. 고지: This product uses the NVD API but is not endorsed or certified by the NVD.
       </UnsupportedNote>
     </>
+  );
+}
+
+/** 출처 전체 요약: 마지막 수집 시각, 정상·실패·지연 수 */
+function SourceSummary({ sources }: { sources: Array<{ key: string; status: string; lagging: boolean; lastSuccessAt: string | null }> }) {
+  const scheduled = sources.filter((source) => source.key !== 'OSV');
+  const failing = scheduled.filter((source) => source.status === 'FAILING').length;
+  const neverRun = scheduled.filter((source) => source.status === 'NEVER_RUN').length;
+  const lagging = scheduled.filter((source) => source.status === 'OK' && source.lagging).length;
+  const latest = scheduled.map((source) => source.lastSuccessAt).filter((value): value is string => Boolean(value)).sort().at(-1);
+  return (
+    <p className="rounded-md bg-muted/60 px-3 py-2 text-sm">
+      마지막 수집 {latest ? `${formatDateTime(latest)} (${formatRelative(latest)})` : '없음'} · 정기 수집 {scheduled.length}곳 중 정상 {scheduled.length - failing - lagging - neverRun}곳
+      {failing > 0 ? <span className="text-destructive">, 실패 {failing}곳</span> : ', 실패 0곳'}
+      {lagging > 0 ? `, 지연 ${lagging}곳` : ''}
+      {neverRun > 0 ? `, 수집 전 ${neverRun}곳` : ''}. 실패한 출처는 간격을 줄여 다시 시도합니다.
+    </p>
   );
 }
