@@ -94,6 +94,8 @@ export async function createTestContext(): Promise<TestContext> {
     GITHUB_APP_CLIENT_SECRET: 'fixture-app-secret',
     GITHUB_APP_SLUG: 'pasukkun-fixture',
     GITHUB_APP_PRIVATE_KEY_PATH: appKeyPath,
+    // 셸에 키가 있어도 테스트에서는 실제 AI 를 부르지 않는다.
+    ANTHROPIC_API_KEY: '',
   });
   execFileSync('npx', ['prisma', 'migrate', 'deploy'], { cwd: join(import.meta.dirname, '..'), env: process.env, stdio: 'pipe' });
 

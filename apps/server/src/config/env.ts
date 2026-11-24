@@ -55,6 +55,8 @@ const schema = z.object({
   GITHUB_APP_PRIVATE_KEY_PATH: optional,
   /** 연결된 저장소의 lockfile 변경을 확인하는 주기 (분) */
   GITHUB_SYNC_MINUTES: int(360, 60),
+  ANTHROPIC_API_KEY: optional,
+  BRIEFING_AI_MODEL: optional,
   SWAGGER_ENABLED: optional,
   GITHUB_TOKEN: optional,
   NVD_API_KEY: optional,
@@ -90,6 +92,8 @@ export interface AppEnv {
   githubOAuth: { clientId: string; clientSecret: string } | null;
   githubApp: { clientId: string; clientSecret: string; slug: string; privateKey: KeyObject } | null;
   githubSyncMinutes: number;
+  /** 보안 브리핑 AI 요약 (키가 없으면 꺼짐) */
+  briefingAi: { apiKey: string; model: string } | null;
   /** 소문자 GitHub 아이디. 비어 있으면 제한 없음 */
   allowedGithubUsers: string[];
   trustProxy: number;
@@ -142,6 +146,7 @@ export function loadEnv(): AppEnv {
         : null,
     githubApp: loadGithubApp(parsed),
     githubSyncMinutes: parsed.GITHUB_SYNC_MINUTES,
+    briefingAi: parsed.ANTHROPIC_API_KEY ? { apiKey: parsed.ANTHROPIC_API_KEY, model: parsed.BRIEFING_AI_MODEL ?? 'claude-opus-5-5' } : null,
     allowedGithubUsers: (parsed.GITHUB_OAUTH_ALLOWED_USERS ?? '')
       .split(',')
       .map((login) => login.trim().toLowerCase())

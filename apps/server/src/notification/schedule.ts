@@ -1,14 +1,14 @@
 /**
  * 규칙별 발송 시간.
  *   IMMEDIATE : 바로 보낸다
- *   DAILY     : 매일 정한 시각들 (예: 09:00, 18:00)
+ *   DAILY     : 매일 정한 시각들 (예: 09:00, 18:00). weekendTimes 가 있으면 토·일에는 그 시각들을 쓴다 (빈 배열이면 주말에는 보내지 않음)
  *   WEEKLY    : 정한 요일들의 정한 시각 (1=월 … 7=일)
  *   INTERVAL  : N시간마다 (사용자 시간대의 자정 기준으로 정렬)
  * 시각은 모두 사용자 시간대 기준이다.
  */
 export type DeliverySchedule =
   | { type: 'IMMEDIATE' }
-  | { type: 'DAILY'; times: string[] }
+  | { type: 'DAILY'; times: string[]; weekendTimes?: string[] }
   | { type: 'WEEKLY'; days: number[]; time: string }
   | { type: 'INTERVAL'; hours: number };
 
@@ -30,7 +30,14 @@ export function validateSchedule(input: unknown): DeliverySchedule {
       if (times.length === 0) throw new ScheduleError('받을 시각을 하나 이상 정해 주세요.');
       if (times.length > MAX_DAILY_TIMES) throw new ScheduleError(`하루에 받을 시각은 ${MAX_DAILY_TIMES}개까지 정할 수 있습니다.`);
       if (!times.every((t) => typeof t === 'string' && TIME.test(t))) throw new ScheduleError('시각은 00:00 ~ 23:59 형식이어야 합니다.');
-      return { type: 'DAILY', times: [...new Set(times as string[])].sort() };
+      const daily: DeliverySchedule = { type: 'DAILY', times: [...new Set(times as string[])].sort() };
+      if (Array.isArray(raw.weekendTimes)) {
+        const weekend = raw.weekendTimes;
+        if (weekend.length > MAX_DAILY_TIMES) throw new ScheduleError(`주말에 받을 시각은 ${MAX_DAILY_TIMES}개까지 정할 수 있습니다.`);
+        if (!weekend.every((t) => typeof t === 'string' && TIME.test(t))) throw new ScheduleError('시각은 00:00 ~ 23:59 형식이어야 합니다.');
+        daily.weekendTimes = [...new Set(weekend as string[])].sort();
+      }
+      return daily;
     }
     case 'WEEKLY': {
       const days = Array.isArray(raw.days) ? raw.days : [];
@@ -55,7 +62,9 @@ export function describeSchedule(schedule: DeliverySchedule): string {
     case 'IMMEDIATE':
       return '즉시';
     case 'DAILY':
-      return `매일 ${schedule.times.join(', ')}`;
+      return schedule.weekendTimes
+        ? `평일 ${schedule.times.join(', ')} · 주말 ${schedule.weekendTimes.length > 0 ? schedule.weekendTimes.join(', ') : '보내지 않음'}`
+        : `매일 ${schedule.times.join(', ')}`;
     case 'WEEKLY':
       return `매주 ${schedule.days.map((d) => DAY_NAMES[d]).join('·')} ${schedule.time}`;
     case 'INTERVAL':
@@ -113,7 +122,7 @@ function slotsForDay(schedule: DeliverySchedule, weekday: number): string[] {
     case 'IMMEDIATE':
       return [];
     case 'DAILY':
-      return schedule.times;
+      return schedule.weekendTimes && weekday >= 6 ? schedule.weekendTimes : schedule.times;
     case 'WEEKLY':
       return schedule.days.includes(weekday) ? [schedule.time] : [];
     case 'INTERVAL':
@@ -145,4 +154,28 @@ export function latestSlot(now: Date, schedule: DeliverySchedule, timeZone: stri
 export function digestDue(now: Date, schedule: DeliverySchedule, timeZone: string, lastSentAt: Date): Date | null {
   const slot = latestSlot(now, schedule, timeZone);
   return slot && slot.getTime() > lastSentAt.getTime() ? slot : null;
+}
+
+/** now 이후(제외)의 가장 가까운 예정 시각. 즉시 발송이면 null. */
+export function nextSlot(now: Date, schedule: DeliverySchedule, timeZone: string): Date | null {
+  if (schedule.type === 'IMMEDIATE') return null;
+  const today = localParts(now, timeZone);
+  for (let ahead = 0; ahead <= 8; ahead += 1) {
+    const noon = zonedToUtc(today.year, today.month, today.day, 12, 0, timeZone);
+    const day = localParts(new Date(noon.getTime() + ahead * 86_400_000), timeZone);
+    const candidates = slotsForDay(schedule, day.weekday)
+      .map((time) => {
+        const [hour, minute] = time.split(':').map(Number);
+        return zonedToUtc(day.year, day.month, day.day, hour, minute, timeZone);
+      })
+      .filter((slot) => slot.getTime() > now.getTime())
+      .sort((a, b) => a.getTime() - b.getTime());
+    if (candidates.length > 0) return candidates[0];
+  }
+  return null;
+}
+
+/** 사용자 시간대의 날짜·시각·요일 (1=월 … 7=일) */
+export function zonedParts(at: Date, timeZone: string) {
+  return localParts(at, timeZone);
 }

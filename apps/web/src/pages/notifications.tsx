@@ -650,7 +650,7 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
               </NativeSelect>
               {digestFormat === 'BRIEFING' ? (
                 <p className="text-xs text-muted-foreground">
-                  받는 시각에 따라 오전, 오후, 저녁 브리핑으로 보냅니다. 지난 브리핑 이후 새 이슈와 KEV 등재 여부, 프로젝트 영향, 재검사로 확인된 패치, 조치 완료로 바꿨지만 아직 재검사로 확인되지 않은 항목, 국내 보안공지를 담습니다. 새 이슈가 없어도 보냅니다.
+                  받는 시각에 따라 아침(밤사이 발생분), 오후(오늘 발생분), 주말 브리핑으로 보냅니다. 지난 브리핑 이후 새 이슈와 KEV 등재 여부, 프로젝트 영향, 재검사로 확인된 패치, 조치 완료로 바꿨지만 아직 재검사로 확인되지 않은 항목, 국내 보안공지를 담습니다. 새 이슈가 없어도 보내고, 보낸 브리핑은 보안 브리핑 메뉴에 남습니다.
                 </p>
               ) : null}
             </div>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, Bell, CalendarDays, FolderKanban, LayoutDashboard, ListChecks, LogOut, Moon, Package, Search, Send, ShieldAlert, Sparkles, Sun } from 'lucide-react';
+import { Activity, Bell, CalendarDays, FolderKanban, LayoutDashboard, ListChecks, LogOut, Megaphone, Moon, Package, Search, Send, ShieldAlert, Sparkles, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/findings', label: '분석 결과', icon: ListChecks },
   { to: '/packages', label: '패키지별 조치', icon: Package },
   { to: '/interests', label: '관심 기술', icon: Sparkles },
+  { to: '/briefings', label: '보안 브리핑', icon: Megaphone },
   { to: '/notifications', label: '알림 설정', icon: Bell },
   { to: '/deliveries', label: '발송 이력', icon: Send },
   { to: '/status', label: '수집 상태', icon: Activity },

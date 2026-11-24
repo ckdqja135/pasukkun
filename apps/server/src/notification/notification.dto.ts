@@ -141,6 +141,13 @@ export class ScheduleDto {
   @IsString({ each: true })
   times?: string[];
 
+  /** DAILY: 토·일에 쓸 시각. 없으면 매일 같은 시각, 빈 배열이면 주말에는 보내지 않는다. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsString({ each: true })
+  weekendTimes?: string[];
+
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(7)

@@ -32,6 +32,7 @@ This guide explains how to use each menu. The app's screens are in Korean, so on
 | 분석 결과 (Findings) | Impact analysis results across all projects |
 | 패키지별 조치 (Package remediation) | Which package upgrade resolves the most findings |
 | 관심 기술 (Technologies of interest) | Save the technologies you care about |
+| 보안 브리핑 (Security briefing) | Read every security briefing that was sent, and see when the next one goes out |
 | 알림 설정 (Notification settings) | Connect channels and decide what you receive and when |
 | 발송 이력 (Delivery history) | Check whether notifications were actually sent |
 | 수집 상태 (Collection status) | Check that vulnerability data is coming in correctly |
@@ -300,7 +301,7 @@ Click **규칙 추가** (Add rule) and set:
 | Option | Behavior |
 |-|-|
 | 즉시 (Immediately) | Sent as soon as it happens |
-| 매일 (Daily) | Collected and sent at the times you set (up to 6 a day, add with **시각 추가**) |
+| 매일 (Daily) | Collected and sent at the times you set (up to 6 a day, add with **시각 추가**). Check **주말(토·일)은 다른 시각에 받기** to use different times on Saturday and Sunday, or none at all |
 | 매주 (Weekly) | Collected and sent on the chosen weekdays at the set time |
 | N시간마다 (Every N hours) | Collected every 1, 2, 3, 4, 6, 8, or 12 hours, counted from midnight (every 6 hours means 00:00, 06:00, 12:00, 18:00) |
 
@@ -313,14 +314,16 @@ When a rule collects instead of sending immediately, **모아 받는 형식** (D
 | 알림 목록 (Alert list) | The titles of the collected alerts. Nothing is sent when nothing was collected |
 | 보안 브리핑 (Security briefing) | A status report sent at every set time, even when nothing new arrived |
 
-A security briefing is titled 오전 (morning), 오후 (afternoon), 저녁 (evening) or 새벽 (early morning) by the time it is sent, and contains:
+A security briefing is titled by when it is sent: 아침 보안 브리핑(밤사이 발생분) (morning, overnight issues) for the first one of the day, 오후 보안 브리핑(오늘 발생분) (afternoon, today's issues) for later ones, and 주말 보안 브리핑 (weekend) on Saturday and Sunday. It contains:
 
-- A short summary: how many new issues came in since the last briefing, whether any are in KEV, how many of your projects are affected, and how many patches were confirmed.
+- A one-line headline and a short summary: how many new issues came in since the last briefing, whether any are in KEV, how many of your projects are affected, and how many patches were confirmed.
 - **새 이슈** (New issues): each issue with its priority, KEV status, affected projects, and whether action is needed (조치 필요) or it is for reference only (참고).
 - **패치 확인** (Patch check): items that the latest scans no longer find because the installed version changed, and items you marked 조치 완료 (Done) that will be confirmed at the next check (조치 보고).
 - **국내 보안공지** (KISA notices): KISA notices collected since the last briefing.
 
 For a GitHub project, pasukkun rechecks the lockfile on its own, so an item marked 조치 완료 moves to the confirmed patches after you push the upgrade.
+
+Each briefing message has a **브리핑 전문 보기** (Full briefing) link that opens it in the **보안 브리핑** menu.
 
 **Writing your own message** (알림 문구 직접 정하기)
 
@@ -365,6 +368,29 @@ In the rule list, the switch turns a rule on or off, the pencil edits it, and th
 - **시간대** (Time zone): the basis for all notification times.
 - **방해 금지 시간 사용** (Use quiet hours): notifications during these hours are held and sent when quiet hours end.
 - **긴급 알림은 방해 금지 시간에도 보내기** (Send urgent alerts during quiet hours): when on, urgent alerts go out right away.
+
+## 보안 브리핑 (Security briefing)
+
+Every security briefing that was sent is kept here, newest first.
+
+Three cards at the top:
+
+| Card | Shows |
+|-|-|
+| 다음 발송 (Next send) | When the next briefing goes out, and each briefing rule's schedule |
+| 모인 알림 (Collected) | How many alerts are waiting for the next briefing, per channel |
+| AI 요약 (AI summary) | Whether AI summary is on. When the server is set up for it, Claude rewrites each briefing's headline, summary, and issue lines in Korean. Otherwise briefings use the fixed format |
+
+Under **지난 브리핑** (Past briefings), each briefing shows:
+
+- Its title, the time it was sent, and the time it collected from. **AI 요약** marks briefings written with AI summary.
+- The rule name and each channel it went to, with whether it was sent (보냄) or failed (보내지 못함).
+- The headline, the summary, and the numbered issue list. Click an issue to open its finding or vulnerability details.
+- **패치 확인** (Patch check) and **국내 보안공지** (KISA notices).
+
+Click a briefing's title to get a link to that briefing alone. Opening that link scrolls to it and highlights it. **더 보기** (More) loads older briefings. Briefings are kept for 180 days.
+
+If you have no briefing rule yet, go to **알림 설정**, set **받는 시간** (When to receive) on a rule, and choose **보안 브리핑** as **모아 받는 형식**.
 
 ## 발송 이력 (Delivery history)
 

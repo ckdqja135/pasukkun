@@ -11,6 +11,7 @@ import { JobService } from './jobs/job.service.js';
 import { BotListener } from './notification/bot-listener.service.js';
 import { ChannelService } from './notification/channel.service.js';
 import { DeliveryService } from './notification/delivery.service.js';
+import { BriefingService } from './notification/briefing.service.js';
 import { GithubLinkService } from './github/github-link.service.js';
 import { GithubSyncService } from './github/github-sync.service.js';
 import { ProjectService } from './project/project.service.js';
@@ -37,6 +38,7 @@ export class WorkerService implements OnApplicationShutdown {
     private readonly assessment: AssessmentService,
     private readonly projects: ProjectService,
     private readonly deliveries: DeliveryService,
+    private readonly briefings: BriefingService,
     private readonly bots: BotListener,
     private readonly channels: ChannelService,
     private readonly githubSync: GithubSyncService,
@@ -51,6 +53,9 @@ export class WorkerService implements OnApplicationShutdown {
       this.logger.log(`기술 태그 재계산: ${await this.upserts.retagAll()}건`);
     });
     this.runner.register('scan', 'work', (job) => this.scans.run(job.payload.scanId as string, job.id));
+    this.runner.register('briefing', 'work', (job) =>
+      this.briefings.build(job.payload.ruleId as string, new Date(job.payload.slotAt as string), new Date(job.payload.fromAt as string)),
+    );
     this.runner.register('github-sync', 'work', async (job) => {
       await this.githubSync.sync(job.payload.projectId as string);
     });
@@ -110,6 +115,7 @@ export class WorkerService implements OnApplicationShutdown {
       await this.prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
       await this.jobs.purgeFinished(new Date(Date.now() - 7 * DAY_MS));
       await this.deliveries.purge(new Date(Date.now() - 180 * DAY_MS));
+      await this.briefings.purge(new Date(Date.now() - 180 * DAY_MS));
       await this.channels.purgeLinkRequests(new Date(Date.now() - DAY_MS));
       await this.githubLinks.purgeLinkRequests(new Date(Date.now() - DAY_MS));
       await this.prisma.ingestionRun.deleteMany({ where: { startedAt: { lt: new Date(Date.now() - 30 * DAY_MS) } } });

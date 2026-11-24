@@ -33,6 +33,7 @@ model User {
   channels     NotificationChannel[]
   rules        SubscriptionRule[]
   deliveries   NotificationDelivery[]
+  briefings    Briefing[]
 }
 
 model Session {
@@ -724,6 +725,7 @@ model SubscriptionRule {
 
   channels   RuleChannel[]
   deliveries NotificationDelivery[]
+  briefings  Briefing[]
 
   @@index([userId])
 }
@@ -808,15 +810,51 @@ model NotificationDelivery {
   /// 발송에 사용한 메시지 요약 (비밀값 없음)
   title             String              @default("")
   digestId          String?
+  /// 보안 브리핑: 이 브리핑을 보내는 건이거나, 이 브리핑에 모인 알림
+  briefingId        Int?
   createdAt         DateTime            @default(now())
   sentAt            DateTime?
   event             NotificationEvent?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   rule              SubscriptionRule?   @relation(fields: [ruleId], references: [id], onDelete: SetNull)
   channel           NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  briefing          Briefing?           @relation(fields: [briefingId], references: [id], onDelete: SetNull)
 
   @@index([status, nextAttemptAt])
+  @@index([briefingId])
   @@index([userId, createdAt])
+}
+
+/// 보낸 보안 브리핑. 보낸 내용을 그대로 남겨 화면에서 다시 볼 수 있게 한다.
+model Briefing {
+  id        Int               @id @default(autoincrement())
+  userId    String
+  ruleId    String?
+  ruleName  String
+  /// 예정 발송 시각
+  slotAt    DateTime
+  /// 이 시각 이후 들어온 항목을 모았다
+  fromAt    DateTime
+  /// BUILDING | READY
+  status    String            @default("BUILDING")
+  title     String            @default("")
+  headline  String            @default("")
+  summary   String            @default("")
+  tone      String            @default("info")
+  /// 새 이슈, 패치 확인, 국내 보안공지. 화면과 메시지가 같은 내용을 쓴다.
+  content   Json?
+  /// AI 요약에 쓴 모델 (정해진 틀로 만들었으면 null)
+  aiModel   String?
+  /// AI 요약을 못 했을 때의 이유 (비밀값 없음)
+  aiError   String?
+  createdAt DateTime          @default(now())
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rule      SubscriptionRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  deliveries NotificationDelivery[]
+
+  @@unique([ruleId, slotAt])
+  @@index([userId, id])
 }
 
 /// GitHub 저장소 가져오기 진행 상태. 사용자의 GitHub 토큰은 저장하지 않고, 그 토큰으로 확인한

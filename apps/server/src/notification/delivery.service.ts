@@ -3,6 +3,7 @@ import { randomToken } from '../common/crypto.js';
 import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
+import { JobService } from '../jobs/job.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { ChannelService } from './channel.service.js';
 import { MessageBuilder } from './message-builder.service.js';
@@ -39,6 +40,7 @@ export class DeliveryService {
     private readonly prisma: PrismaService,
     private readonly channels: ChannelService,
     private readonly messages: MessageBuilder,
+    private readonly jobs: JobService,
     @Inject(APP_ENV) private readonly env: AppEnv,
   ) {}
 
@@ -287,7 +289,7 @@ export class DeliveryService {
     const ruleIds = new Set([...waiting.map((row) => row.ruleId), ...briefings.map((row) => row.id)].filter((id): id is string => id !== null));
     let created = 0;
     for (const ruleId of ruleIds) {
-      const rule = await this.prisma.subscriptionRule.findUnique({ where: { id: ruleId }, include: { channels: { include: { channel: { select: { status: true } } } } } });
+      const rule = await this.prisma.subscriptionRule.findUnique({ where: { id: ruleId } });
       if (!rule) continue;
       const settings = await this.prisma.userSettings.upsert({ where: { userId: rule.userId }, update: {}, create: { userId: rule.userId } });
       let schedule: DeliverySchedule;
@@ -298,11 +300,17 @@ export class DeliveryService {
       }
       const slot = digestDue(now, schedule, settings.timezone, rule.lastDigestAt ?? rule.createdAt);
       if (!slot) continue;
-      const briefing = rule.enabled && rule.digestFormat === 'BRIEFING';
+      if (rule.enabled && rule.digestFormat === 'BRIEFING') {
+        // 보안 브리핑은 작업으로 만든다 (AI 요약이 오래 걸릴 수 있어 예약 처리와 분리).
+        const from = rule.lastDigestAt ?? rule.createdAt;
+        await this.jobs.enqueue('briefing', { ruleId, slotAt: slot.toISOString(), fromAt: from.toISOString() }, { dedupeKey: `briefing:${ruleId}:${slot.toISOString()}` });
+        await this.prisma.subscriptionRule.update({ where: { id: ruleId }, data: { lastDigestAt: now } });
+        created += 1;
+        continue;
+      }
       await this.prisma.$transaction(async (tx) => {
         const pending = await tx.notificationDelivery.findMany({ where: { ruleId, status: 'DIGEST_PENDING' }, select: { id: true, channelId: true } });
         const byChannel = new Map<string, string[]>();
-        if (briefing) for (const link of rule.channels) if (link.channel.status === 'ACTIVE') byChannel.set(link.channelId, []);
         for (const row of pending) byChannel.set(row.channelId, [...(byChannel.get(row.channelId) ?? []), row.id]);
         for (const [channelId, ids] of byChannel) {
           const key = `digest:${ruleId}:${channelId}:${slot.toISOString()}`;
@@ -316,11 +324,11 @@ export class DeliveryService {
                 kind: 'DIGEST',
                 dedupeKey: key,
                 status: 'PENDING',
-                title: (briefing ? `${rule.name} 보안 브리핑 (새 항목 ${ids.length}건)` : `${rule.name} 요약 (${ids.length}건, ${describeSchedule(schedule)})`).slice(0, 300),
+                title: `${rule.name} 요약 (${ids.length}건, ${describeSchedule(schedule)})`.slice(0, 300),
               },
               select: { id: true },
             }));
-          if (ids.length > 0) await tx.notificationDelivery.updateMany({ where: { id: { in: ids } }, data: { status: 'DIGESTED', digestId: digest.id } });
+          await tx.notificationDelivery.updateMany({ where: { id: { in: ids } }, data: { status: 'DIGESTED', digestId: digest.id } });
           created += 1;
         }
         await tx.subscriptionRule.update({ where: { id: ruleId }, data: { lastDigestAt: now } });

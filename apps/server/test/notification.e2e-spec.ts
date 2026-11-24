@@ -297,14 +297,24 @@ describe('알림: Outbox 중계, 중복 억제, 재시도', () => {
     const tech = ((await user.get('/rules').expect(200)).body as Array<{ id: string; name: string }>).find((r) => r.name === 'tech')!;
     const input = { name: 'tech', kind: 'TECH_INTEREST', eventTypes: ['TECH_NEW_VULN'], channelIds: [discordId] };
     await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'IMMEDIATE' }, digestFormat: 'BRIEFING' }).expect(400);
-    await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'DAILY', times: ['09:00', '18:00'] }, digestFormat: 'BRIEFING' }).expect(200);
+    const saved = await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'DAILY', times: ['09:00', '18:00'], weekendTimes: ['12:00'] }, digestFormat: 'BRIEFING' }).expect(200);
+    expect(saved.body.scheduleText).toBe('평일 09:00, 18:00 · 주말 12:00');
     ctx.bots.discordSent.length = 0;
     expect(await deliveries.createDueDigests(new Date(Date.now() + 2 * 86_400_000))).toBe(1);
     await flush();
     const embed = (discord()[0].body.embeds as Array<{ title: string; description: string; fields: Array<{ name: string }> }>)[0];
-    expect(embed.title).toMatch(/\[(새벽|오전|오후|저녁) 보안 브리핑\] - 새 이슈 없음/);
+    expect(embed.title).toMatch(/^\[.*보안 브리핑.*\] - 새 이슈 없음$/);
     expect(embed.description).toContain('패치 0건');
     expect(embed.fields.map((field) => field.name)).toContain('패치 확인 (지난 브리핑 이후 점검)');
+    // 보낸 브리핑은 저장되어 화면에서 다시 볼 수 있다.
+    const list = (await user.get('/briefings').expect(200)).body as { items: Array<{ id: number; headline: string; channels: Array<{ status: string }> }> };
+    expect(list.items).toHaveLength(1);
+    expect(list.items[0]).toMatchObject({ headline: '새 이슈 없음', channels: [{ status: 'SENT' }] });
+    expect(JSON.stringify(discord()[0].body)).toContain(`/briefings?id=${list.items[0].id}`);
+    await user.get(`/briefings/${list.items[0].id}`).expect(200);
+    const overview = (await user.get('/briefings/overview').expect(200)).body;
+    expect(overview).toMatchObject({ ruleCount: 1, ai: { enabled: false } });
+    expect(overview.nextSendAt).not.toBeNull();
     await user.put(`/rules/${tech.id}`, { ...input, schedule: { type: 'DAILY', times: ['09:00', '18:00'] } }).expect(200);
     ctx.bots.discordSent.length = 0;
   });

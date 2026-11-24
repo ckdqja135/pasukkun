@@ -594,6 +594,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/briefings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 지난 보안 브리핑 (최신순) */
+        get: operations["BriefingController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/briefings/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 다음 발송, 모인 알림, AI 요약 상태 */
+        get: operations["BriefingController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/briefings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 브리핑 하나 */
+        get: operations["BriefingController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/github/status": {
         parameters: {
             query?: never;
@@ -1498,6 +1549,8 @@ export interface components {
             /** @enum {string} */
             type: "IMMEDIATE" | "DAILY" | "WEEKLY" | "INTERVAL";
             times?: string[];
+            /** @description DAILY: 토·일에 쓸 시각. 없으면 매일 같은 시각, 빈 배열이면 주말에는 보내지 않는다. */
+            weekendTimes?: string[];
             days?: number[];
             time?: string;
             hours?: number;
@@ -1581,6 +1634,91 @@ export interface components {
             total: number;
             page: number;
             pageSize: number;
+        };
+        BriefingItemDto: {
+            /** @description 우선순위 또는 심각도 표시 (예: 긴급) */
+            tag: string;
+            /** @enum {string} */
+            tone: "info" | "urgent" | "high" | "medium" | "low";
+            text: string;
+            /** @description 화면 안 링크 (분석 결과 또는 취약점 상세) */
+            href: string;
+            kev: boolean;
+            /** @description 영향받는 프로젝트 수 */
+            affected: number;
+        };
+        ProjectCountDto: {
+            name: string;
+            count: number;
+        };
+        BriefingPatchesDto: {
+            /** @description 재검사에서 설치 버전이 바뀌어 더는 나오지 않는 항목 */
+            confirmed: number;
+            confirmedByProject: components["schemas"]["ProjectCountDto"][];
+            /** @description 조치 완료로 바꿨지만 아직 재검사로 확인되지 않은 항목 */
+            reported: number;
+            reportedByProject: components["schemas"]["ProjectCountDto"][];
+        };
+        BriefingNoticeDto: {
+            title: string;
+            url: string;
+        };
+        BriefingChannelDto: {
+            name: string;
+            /** @enum {string} */
+            type: "TELEGRAM" | "DISCORD";
+            /** @description 이 채널로 보낸 결과 (발송 상태) */
+            status: string;
+        };
+        BriefingDto: {
+            id: number;
+            /** @description 예: 아침 보안 브리핑(밤사이 발생분) */
+            title: string;
+            ruleName: string;
+            slotAt: string;
+            /** @description 이 시각 이후 들어온 항목을 모았다 */
+            fromAt: string;
+            createdAt: string;
+            headline: string;
+            summary: string;
+            /** @enum {string} */
+            tone: "info" | "urgent" | "high" | "medium" | "low";
+            /** @description AI 요약에 쓴 모델 (정해진 틀이면 null) */
+            aiModel: string | null;
+            /** @description AI 요약을 못 한 이유 */
+            aiError: string | null;
+            items: components["schemas"]["BriefingItemDto"][];
+            /** @description 새 이슈 전체 수 (items 는 최대 50건) */
+            totalItems: number;
+            patches: components["schemas"]["BriefingPatchesDto"];
+            notices: components["schemas"]["BriefingNoticeDto"][];
+            channels: components["schemas"]["BriefingChannelDto"][];
+        };
+        BriefingListDto: {
+            items: components["schemas"]["BriefingDto"][];
+            nextCursor: number | null;
+        };
+        BriefingScheduleDto: {
+            ruleName: string;
+            text: string;
+        };
+        BriefingPendingDto: {
+            channelName: string;
+            count: number;
+        };
+        BriefingAiStatusDto: {
+            enabled: boolean;
+            model: string | null;
+        };
+        BriefingOverviewDto: {
+            /** @description 켜져 있는 보안 브리핑 규칙 수 */
+            ruleCount: number;
+            nextSendAt: string | null;
+            nextRuleName: string | null;
+            schedules: components["schemas"]["BriefingScheduleDto"][];
+            /** @description 다음 브리핑에 들어갈, 지금까지 모인 알림 (채널별) */
+            pending: components["schemas"]["BriefingPendingDto"][];
+            ai: components["schemas"]["BriefingAiStatusDto"];
         };
         GithubStatusDto: {
             /** @description 서비스 GitHub 앱이 설정되어 있는지 */
@@ -2872,6 +3010,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeliveryDto"];
+                };
+            };
+        };
+    };
+    BriefingController_list: {
+        parameters: {
+            query?: {
+                /** @description 이 번호보다 이전 브리핑부터 */
+                cursor?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefingListDto"];
+                };
+            };
+        };
+    };
+    BriefingController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefingOverviewDto"];
+                };
+            };
+        };
+    };
+    BriefingController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefingDto"];
                 };
             };
         };

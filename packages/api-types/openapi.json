@@ -1790,6 +1790,102 @@
         ]
       }
     },
+    "/api/v1/briefings": {
+      "get": {
+        "operationId": "BriefingController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "이 번호보다 이전 브리핑부터",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "지난 보안 브리핑 (최신순)",
+        "tags": [
+          "briefings"
+        ]
+      }
+    },
+    "/api/v1/briefings/overview": {
+      "get": {
+        "operationId": "BriefingController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingOverviewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "다음 발송, 모인 알림, AI 요약 상태",
+        "tags": [
+          "briefings"
+        ]
+      }
+    },
+    "/api/v1/briefings/{id}": {
+      "get": {
+        "operationId": "BriefingController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "브리핑 하나",
+        "tags": [
+          "briefings"
+        ]
+      }
+    },
     "/api/v1/github/status": {
       "get": {
         "operationId": "GithubController_status",
@@ -4717,6 +4813,14 @@
               "type": "string"
             }
           },
+          "weekendTimes": {
+            "description": "DAILY: 토·일에 쓸 시각. 없으면 매일 같은 시각, 빈 배열이면 주말에는 보내지 않는다.",
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "days": {
             "maxItems": 7,
             "type": "array",
@@ -5050,6 +5154,332 @@
           "total",
           "page",
           "pageSize"
+        ]
+      },
+      "BriefingItemDto": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "우선순위 또는 심각도 표시 (예: 긴급)"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "info",
+              "urgent",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string",
+            "description": "화면 안 링크 (분석 결과 또는 취약점 상세)"
+          },
+          "kev": {
+            "type": "boolean"
+          },
+          "affected": {
+            "type": "number",
+            "description": "영향받는 프로젝트 수"
+          }
+        },
+        "required": [
+          "tag",
+          "tone",
+          "text",
+          "href",
+          "kev",
+          "affected"
+        ]
+      },
+      "ProjectCountDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "count"
+        ]
+      },
+      "BriefingPatchesDto": {
+        "type": "object",
+        "properties": {
+          "confirmed": {
+            "type": "number",
+            "description": "재검사에서 설치 버전이 바뀌어 더는 나오지 않는 항목"
+          },
+          "confirmedByProject": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectCountDto"
+            }
+          },
+          "reported": {
+            "type": "number",
+            "description": "조치 완료로 바꿨지만 아직 재검사로 확인되지 않은 항목"
+          },
+          "reportedByProject": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectCountDto"
+            }
+          }
+        },
+        "required": [
+          "confirmed",
+          "confirmedByProject",
+          "reported",
+          "reportedByProject"
+        ]
+      },
+      "BriefingNoticeDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ]
+      },
+      "BriefingChannelDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TELEGRAM",
+              "DISCORD"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "이 채널로 보낸 결과 (발송 상태)"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "status"
+        ]
+      },
+      "BriefingDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string",
+            "description": "예: 아침 보안 브리핑(밤사이 발생분)"
+          },
+          "ruleName": {
+            "type": "string"
+          },
+          "slotAt": {
+            "type": "string"
+          },
+          "fromAt": {
+            "type": "string",
+            "description": "이 시각 이후 들어온 항목을 모았다"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tone": {
+            "enum": [
+              "info",
+              "urgent",
+              "high",
+              "medium",
+              "low"
+            ],
+            "type": "string"
+          },
+          "aiModel": {
+            "type": "string",
+            "nullable": true,
+            "description": "AI 요약에 쓴 모델 (정해진 틀이면 null)"
+          },
+          "aiError": {
+            "type": "string",
+            "nullable": true,
+            "description": "AI 요약을 못 한 이유"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingItemDto"
+            }
+          },
+          "totalItems": {
+            "type": "number",
+            "description": "새 이슈 전체 수 (items 는 최대 50건)"
+          },
+          "patches": {
+            "$ref": "#/components/schemas/BriefingPatchesDto"
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingNoticeDto"
+            }
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingChannelDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "ruleName",
+          "slotAt",
+          "fromAt",
+          "createdAt",
+          "headline",
+          "summary",
+          "tone",
+          "aiModel",
+          "aiError",
+          "items",
+          "totalItems",
+          "patches",
+          "notices",
+          "channels"
+        ]
+      },
+      "BriefingListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingDto"
+            }
+          },
+          "nextCursor": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "BriefingScheduleDto": {
+        "type": "object",
+        "properties": {
+          "ruleName": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleName",
+          "text"
+        ]
+      },
+      "BriefingPendingDto": {
+        "type": "object",
+        "properties": {
+          "channelName": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "channelName",
+          "count"
+        ]
+      },
+      "BriefingAiStatusDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "enabled",
+          "model"
+        ]
+      },
+      "BriefingOverviewDto": {
+        "type": "object",
+        "properties": {
+          "ruleCount": {
+            "type": "number",
+            "description": "켜져 있는 보안 브리핑 규칙 수"
+          },
+          "nextSendAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextRuleName": {
+            "type": "string",
+            "nullable": true
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingScheduleDto"
+            }
+          },
+          "pending": {
+            "description": "다음 브리핑에 들어갈, 지금까지 모인 알림 (채널별)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingPendingDto"
+            }
+          },
+          "ai": {
+            "$ref": "#/components/schemas/BriefingAiStatusDto"
+          }
+        },
+        "required": [
+          "ruleCount",
+          "nextSendAt",
+          "nextRuleName",
+          "schedules",
+          "pending",
+          "ai"
         ]
       },
       "GithubStatusDto": {

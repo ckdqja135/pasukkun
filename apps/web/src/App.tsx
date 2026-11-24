@@ -14,6 +14,7 @@ import { ProjectDetailPage } from '@/pages/project-detail';
 import { ProjectsPage } from '@/pages/projects';
 import { StatusPage } from '@/pages/status';
 import { VulnerabilityDetailPage } from '@/pages/vulnerability-detail';
+import { BriefingsPage } from '@/pages/briefings';
 import { CalendarPage } from '@/pages/calendar';
 import { PackagesPage } from '@/pages/packages';
 
@@ -42,6 +43,7 @@ export function App() {
         <Route path="packages" element={<PackagesPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="interests" element={<InterestsPage />} />
+        <Route path="briefings" element={<BriefingsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="deliveries" element={<DeliveriesPage />} />
         <Route path="status" element={<StatusPage />} />
