@@ -149,14 +149,38 @@ export class AssessmentService {
     const vulnerabilityIds = [...new Set(work.map((item) => item.vulnerabilityId))];
     const vulnerabilities = new Map<
       string,
-      { id: string; withdrawnAt: Date | null; kevAddedAt: Date | null; malicious: boolean; cvssScore: number | null; cvssVector: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'; epssScore: number | null }
+      {
+        id: string;
+        withdrawnAt: Date | null;
+        kevAddedAt: Date | null;
+        malicious: boolean;
+        /** OSV 레코드를 마지막으로 저장한 시각 (없으면 null) */
+        osvFetchedAt: Date | null;
+        cvssScore: number | null;
+        cvssVector: string | null;
+        severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+        epssScore: number | null;
+      }
     >();
     for (const ids of chunk(vulnerabilityIds, CHUNK)) {
       const found = await this.prisma.vulnerability.findMany({
         where: { id: { in: ids } },
-        select: { id: true, withdrawnAt: true, kevAddedAt: true, cvssScore: true, cvssVector: true, severity: true, epssScore: true, identifiers: { select: { value: true } } },
+        select: {
+          id: true,
+          withdrawnAt: true,
+          kevAddedAt: true,
+          cvssScore: true,
+          cvssVector: true,
+          severity: true,
+          epssScore: true,
+          identifiers: { select: { value: true } },
+          sources: { where: { source: 'OSV' }, select: { fetchedAt: true } },
+        },
       });
-      for (const { identifiers, ...row } of found) vulnerabilities.set(row.id, { ...row, malicious: isMaliciousAdvisory(identifiers) });
+      for (const { identifiers, sources, ...row } of found) {
+        const osvFetchedAt = sources.length ? new Date(Math.max(...sources.map((source) => source.fetchedAt.getTime()))) : null;
+        vulnerabilities.set(row.id, { ...row, malicious: isMaliciousAdvisory(identifiers), osvFetchedAt });
+      }
     }
 
     const existingRows = await this.prisma.finding.findMany({
@@ -178,8 +202,8 @@ export class AssessmentService {
           for (const [vulnerabilityId, items] of batch) {
             const vulnerability = vulnerabilities.get(vulnerabilityId);
             if (!vulnerability) continue;
-            const newMatches: Array<{ findingId: string; label: string }> = [];
-            let raised: { findingId: string; from: string; to: PriorityLevel } | null = null;
+            const newMatches: Array<{ findingId: string; label: string; reopenedAfter: string | null }> = [];
+            let raised: { findingId: string; from: string; to: PriorityLevel; since: string } | null = null;
 
             for (const item of items) {
               const key = `${vulnerabilityId}|${item.target.packageId}|${item.target.version}`;
@@ -203,7 +227,13 @@ export class AssessmentService {
                 unparsed: (row.unparsed ?? []) as string[],
               }));
               const evaluations = specs.map((spec) => evaluateSpec(item.target.version, spec));
-              const combined = combineEvaluations(evaluations, item.osvReported);
+              // 이번 평가에서 OSV 를 조회하지 않았으면 마지막 검사의 OSV 보고를 쓴다. 조회하지 않은 것을 "보고 없음"으로 바꾸지 않는다.
+              // 단, 그 검사 뒤에 바뀐 OSV 공지(철회·범위 변경 포함)가 저장됐다면 당시 보고는 지난 정보이므로 쓰지 않는다 (다음 검사에서 다시 조회한다).
+              const lastScan = (before?.evidence as { lastScan?: { osvReported?: unknown; at?: unknown } } | null)?.lastScan;
+              const lastScanAt = typeof lastScan?.at === 'string' ? Date.parse(lastScan.at) : Number.NaN;
+              const osvChangedSince = vulnerability.osvFetchedAt !== null && !(vulnerability.osvFetchedAt.getTime() <= lastScanAt);
+              const osvReported = item.osvReported ?? (typeof lastScan?.osvReported === 'boolean' && !osvChangedSince ? lastScan.osvReported : null);
+              const combined = combineEvaluations(evaluations, osvReported);
 
               if (combined.result === 'NOT_AFFECTED') {
                 // 일치한 적 없는 조합은 행을 만들지 않는다. 일치했던 조합은 이력을 남기고 닫는다.
@@ -224,7 +254,7 @@ export class AssessmentService {
                 continue;
               }
 
-              const fix = suggestFix(item.target.version, evaluations, specs);
+              const fix = suggestFix(item.target.version, specs);
               const functions = [...new Set(activeRows.flatMap((row) => (row.functions ?? []) as string[]))];
               const conditions = deriveConditions(vulnerability.cvssVector, functions);
               const rangeHash = stableHash(activeRows.map((row) => `${row.sourceRecord.source}:${row.rangeHash}`).sort());
@@ -332,10 +362,10 @@ export class AssessmentService {
 
               const wasActiveMatch = before !== undefined && before.resolvedAt === null && before.versionMatch === 'AFFECTED';
               if (combined.result === 'AFFECTED' && !wasActiveMatch) {
-                newMatches.push({ findingId, label: `${item.target.name}@${item.target.version}` });
+                newMatches.push({ findingId, label: `${item.target.name}@${item.target.version}`, reopenedAfter: before?.resolvedAt?.toISOString() ?? null });
               } else if (combined.result === 'AFFECTED' && wasActiveMatch && priority.rank > before!.priorityRank) {
                 if (!raised || PRIORITY_RANK[priority.priority] > PRIORITY_RANK[raised.to]) {
-                  raised = { findingId, from: before!.priority, to: priority.priority };
+                  raised = { findingId, from: before!.priority, to: priority.priority, since: before!.analyzedAt.toISOString() };
                 }
               }
             }
@@ -346,6 +376,8 @@ export class AssessmentService {
             // 같은 (프로젝트, 취약점) 의 변화는 이벤트 하나로 묶는다. (Outbox: 분석 결과와 같은 트랜잭션)
             if (newMatches.length > 0) {
               const labels = newMatches.map((match) => match.label).sort();
+              // 해소됐다가 다시 생긴 일치는 새 알림이다. 해소 시각을 지문에 넣어 이전 알림과 구분한다.
+              const occurrences = newMatches.map((match) => (match.reopenedAfter ? `${match.label}#reopened:${match.reopenedAfter}` : match.label)).sort();
               await tx.notificationEvent.create({
                 data: {
                   type: 'PROJECT_NEW_MATCH',
@@ -353,7 +385,7 @@ export class AssessmentService {
                   vulnerabilityId,
                   findingId: newMatches[0].findingId,
                   payload: { packages: labels },
-                  changeFingerprint: `match:${stableHash(labels)}`,
+                  changeFingerprint: `match:${stableHash(occurrences)}`,
                 },
               });
             }
@@ -365,7 +397,8 @@ export class AssessmentService {
                   vulnerabilityId,
                   findingId: raised.findingId,
                   payload: { from: raised.from, to: raised.to },
-                  changeFingerprint: `priority:${raised.to}`,
+                  // 내려갔다가 다시 오른 경우도 새 알림이다. 직전 평가 시각으로 이전 상승과 구분한다.
+                  changeFingerprint: `priority:${raised.to}:${raised.since}`,
                 },
               });
             }

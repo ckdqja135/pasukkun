@@ -2,13 +2,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
-import { isMaliciousAdvisory } from '../domain/malicious.js';
+import { isMaliciousAdvisory, MALICIOUS_ID_PREFIX } from '../domain/malicious.js';
 import type { Interval } from '../domain/version-match.js';
 import { describeProjectCounts, type BriefingContent } from './briefing.service.js';
 import type { TemplateValues } from './template.js';
 import {
   CONDITION_LABEL,
   EVENT_HEADINGS,
+  MALICIOUS_NOTICE,
   MATCH_LABEL,
   PRIORITY_LABEL,
   SEVERITY_LABEL,
@@ -69,7 +70,7 @@ export class MessageBuilder {
   private commonFields(v: NonNullable<Awaited<ReturnType<MessageBuilder['loadVulnerability']>>>): Array<{ label: string; value: string }> {
     const fields: Array<{ label: string; value: string }> = [];
     if (isMaliciousAdvisory(v.identifiers)) {
-      fields.push({ label: '악성 패키지', value: '이 버전에는 악성 코드가 들어 있습니다. 버전을 올리는 것으로 끝나지 않으니 패키지를 제거하고, 설치된 PC 와 CI 에서 쓰던 토큰·키를 교체하세요.' });
+      fields.push({ label: '악성 패키지', value: MALICIOUS_NOTICE });
     }
     const score = v.cvssScore !== null ? ` · CVSS ${v.cvssVersion ?? ''} ${v.cvssScore.toFixed(1)}`.replace('  ', ' ') : ' · CVSS 미제공';
     fields.push({ label: '심각도', value: `${SEVERITY_LABEL[v.severity]}${score}` });
@@ -144,6 +145,7 @@ export class MessageBuilder {
       links: this.links(v, `/vulnerabilities/${v.id}`),
       tone: v.kevAddedAt ? 'urgent' : SEVERITY_TONE[v.severity],
       footer: 'pasukkun · 관심 기술 알림',
+      ...(isMaliciousAdvisory(v.identifiers) ? { requiredNotice: `[악성 패키지] ${MALICIOUS_NOTICE}` } : {}),
       values: {
         ...this.commonValues(v),
         이벤트: EVENT_HEADINGS[type] ?? type,
@@ -225,6 +227,7 @@ export class MessageBuilder {
       links: this.links(v, `/findings/${top.id}`),
       tone: PRIORITY_TONE[maxPriority],
       footer: 'pasukkun · 버전 일치만으로 실제 악용 가능성을 확정하지 않습니다',
+      ...(isMaliciousAdvisory(v.identifiers) ? { requiredNotice: `[악성 패키지] ${MALICIOUS_NOTICE}` } : {}),
     };
   }
 
@@ -240,6 +243,13 @@ export class MessageBuilder {
     const affected = Number(payload.affected ?? 0);
     const unknown = Number(payload.unknown ?? 0);
     const partial = payload.status === 'PARTIAL';
+    // 요약은 건수만 알려주므로, 악성 패키지는 이름과 함께 따로 알린다 (발송 시점의 최신 결과 기준).
+    const malicious = await this.prisma.finding.findMany({
+      where: { projectId, resolvedAt: null, versionMatch: { in: ['AFFECTED', 'UNKNOWN'] }, vulnerability: { identifiers: { some: { value: { startsWith: MALICIOUS_ID_PREFIX } } } } },
+      select: { version: true, package: { select: { name: true } } },
+      orderBy: { id: 'asc' },
+    });
+    const maliciousNames = [...new Set(malicious.map((row) => `${row.package.name}@${row.version}`))];
     return {
       heading: '[프로젝트 영향] 최초 분석 요약',
       title: project.name,
@@ -255,6 +265,9 @@ export class MessageBuilder {
         { label: '영향 버전 일치', value: `${affected}건` },
         { label: '판단 불가', value: `${unknown}건` },
         ...(breakdown ? [{ label: '대응 우선순위', value: breakdown }] : []),
+        ...(maliciousNames.length
+          ? [{ label: '악성 패키지', value: `${maliciousNames.slice(0, 5).join(', ')}${maliciousNames.length > 5 ? ` 외 ${maliciousNames.length - 5}개` : ''}\n${MALICIOUS_NOTICE}` }]
+          : []),
         ...(partial ? [{ label: '검사 상태', value: '부분 완료 - 일부 외부 조회 실패' }] : []),
       ],
       links: [{ label: '분석 결과 보기', url: `${this.env.appOrigin}/projects/${project.id}` }],

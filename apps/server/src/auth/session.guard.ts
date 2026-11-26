@@ -11,6 +11,7 @@ import { sha256, timingSafeEqualString } from '../common/crypto.js';
 import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
+import { isAllowedLogin } from './allowlist.js';
 import { SESSION_COOKIE, type AuthedRequest } from './auth.types.js';
 import { IS_PUBLIC } from './decorators.js';
 
@@ -48,7 +49,8 @@ export class SessionGuard implements CanActivate {
         where: { id: sha256(token) },
         include: { user: { select: { id: true, githubLogin: true } } },
       });
-      if (session && session.expiresAt > new Date()) {
+      // 허용 목록에서 빠진 사용자의 세션은 만료 전이라도 쓸 수 없다.
+      if (session && session.expiresAt > new Date() && isAllowedLogin(this.env, session.user.githubLogin)) {
         request.user = { id: session.user.id, login: session.user.githubLogin };
         request.sessionId = session.id;
         request.csrfToken = session.csrfToken;

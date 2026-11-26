@@ -17,6 +17,9 @@ const MAX_ENQUEUE_PER_TICK = 200;
 export type SyncOutcome = 'CREATED' | 'UNCHANGED' | 'ERROR' | 'DISCONNECTED' | 'SKIPPED';
 
 const DISCONNECTED_MESSAGE = '저장소에 접근할 수 없습니다. GitHub 에서 앱 설치가 해제되었거나 저장소가 앱에서 빠졌습니다.';
+/** 가져온 사용자의 저장소 접근 권한을 다시 확인하는 주기 */
+const ACCESS_RECHECK_DAYS = 30;
+const RELINK_MESSAGE = `${ACCESS_RECHECK_DAYS}일마다 GitHub 로 다시 연결해 이 저장소에 아직 접근할 수 있는지 확인합니다. [GitHub 로 다시 연결] 을 누르면 확인한 뒤 다시 가져옵니다.`;
 
 /**
  * GitHub 연결 프로젝트의 lockfile 변경을 확인한다 (Worker).
@@ -68,6 +71,12 @@ export class GithubSyncService {
     if (!this.client.enabled()) {
       await mark({ status: 'ERROR', error: '서비스의 GitHub 앱 설정이 없어 확인하지 못했습니다.' });
       return 'ERROR';
+    }
+    // 사용자 토큰을 저장하지 않으므로 가져온 사람의 접근 권한은 다시 연결할 때만 확인할 수 있다.
+    // 확인한 지 오래되면, 권한을 잃은 사람에게 저장소 내용이 계속 들어가지 않도록 다시 연결할 때까지 가져오지 않는다.
+    if (now.getTime() - (source.accessVerifiedAt ?? source.createdAt).getTime() > ACCESS_RECHECK_DAYS * DAY_MS) {
+      await mark({ status: 'DISCONNECTED', error: RELINK_MESSAGE });
+      return 'DISCONNECTED';
     }
     try {
       const token = await this.client.installationToken(source.installationId, [source.repoId]);

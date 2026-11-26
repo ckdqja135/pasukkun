@@ -125,6 +125,10 @@ Click a title in the list.
 
 After that, pasukkun checks every 6 hours whether the lockfile changed. If it changed, the new version is registered and scanned automatically.
 
+Every 30 days, connect to GitHub again so pasukkun can confirm you still have access to the repository. Until you do, the project shows **연결 끊김** (Disconnected) and the lockfile is not fetched.
+1. Open the project and click **GitHub 로 다시 연결** (Reconnect to GitHub) on its GitHub card.
+2. Approve on GitHub. If you can still access the repository, the lockfile is fetched again right away. You can close the repository list that opens.
+
 - pasukkun reads only the chosen lockfile and the package.json next to it. It does not read your source code.
 - No GitHub token is stored. Only the repository and file location are kept.
 - To stop, remove the app from the repository on GitHub, or use **연결 해제** (Disconnect) on the project.
@@ -211,7 +215,7 @@ Results for all projects in one place. Narrow down by project; the filters are t
 Click an item.
 
 - **확인된 사실 - 버전 매칭** (Facts - version match): why this was decided, with the installed version, affected range, assessment per source, install location, and dependency path.
-- **대응 방법** (Remediation): the fixed version to upgrade to from this version. If only a newer release line has a fix, it says so. If no fix information exists, it shows "patch not confirmed" and does not guess. For a **악성 패키지** (Malicious package), it shows what to do instead: remove the package or pin a version the advisory marks as safe, replace the tokens and keys used on computers and CI where it was installed, and check the builds and deployments run since then.
+- **대응 방법** (Remediation): the fixed version to upgrade to from this version, chosen so that no source still lists it as affected. If only a newer release line has a fix, it says so. If no fix information exists, it shows "patch not confirmed" and does not guess. For a **악성 패키지** (Malicious package), it shows what to do instead: remove the package or pin a version the advisory marks as safe, replace the tokens and keys used on computers and CI where it was installed, and check the builds and deployments run since then.
 - **대응 우선순위** (Priority): which rule produced this level. **규칙 보기** (View rules) shows all rules.
 
 **Exploit condition review** (아직 확인하지 못한 조건)
@@ -233,7 +237,7 @@ Click an item.
 Affected findings grouped by package and installed version, so you can start with the upgrade that clears the most.
 
 - Each row shows the package, **설치 버전 → 올릴 버전** (installed version → version to upgrade to), how many findings that upgrade resolves, the affected projects, and the highest priority. A **KEV** label means at least one of them is known to be exploited.
-- The version to upgrade to is the highest fixed version confirmed among that row's findings. If a fix exists only in a newer release line, check compatibility before upgrading.
+- The version to upgrade to is the highest fixed version confirmed among that row's findings, checked against every advisory for that package. If it is still inside another advisory's affected range, the next fixed version that clears all of them is shown instead. If none does, it shows **패치 미확인** (Patch not confirmed). If a fix exists only in a newer release line, check compatibility before upgrading.
 - **패치 미확인** (Patch not confirmed) counts findings with no fixed version information; upgrading may not resolve them.
 - Click a row to see its findings and open each one.
 - Narrow down with the project selector at the top right.
@@ -283,7 +287,7 @@ If the connect buttons are disabled, the bot is not set up on this server yet. C
 
 There are two kinds of rules:
 - **관심 기술 알림** (Technology interest): advisories matching your saved technologies. Related, not necessarily affecting your projects.
-- **프로젝트 영향 알림** (Project impact): when an installed version in your project falls inside an affected range. On a project's first scan, you get one summary instead of one message per existing item.
+- **프로젝트 영향 알림** (Project impact): when an installed version in your project falls inside an affected range. On a project's first scan, you get one summary instead of one message per existing item. Malicious packages found in that scan are named in the summary.
 
 Click **규칙 추가** (Add rule) and set:
 
@@ -339,6 +343,7 @@ Turn on the switch to start from the default template and edit it.
 - Unknown placeholders are reported when you save. Placeholders without a value become "-".
 - Text is sent as plain text. HTML and mentions like @everyone do not work.
 - Alert lists, security briefings, and first scan summaries use their own fixed format, not your template.
+- For a malicious package, a **[악성 패키지]** (Malicious package) notice is always added above your text.
 
 | Placeholder | Value |
 |-|-|

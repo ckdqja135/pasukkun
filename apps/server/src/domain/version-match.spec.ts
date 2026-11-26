@@ -129,8 +129,7 @@ describe('suggestFix', () => {
         { introduced: '3.0.0', fixed: '3.1.0' },
       ],
     });
-    const e = evaluateSpec('2.1.0', s);
-    expect(suggestFix('2.1.0', [e], [s])).toEqual({ kind: 'FIXED', version: '2.3.1', source: 'GHSA' });
+    expect(suggestFix('2.1.0', [s])).toEqual({ kind: 'FIXED', version: '2.3.1', source: 'GHSA' });
   });
   it('현재 구간에 수정 버전이 없고 상위 계열에만 있으면 그 사실을 구분한다', () => {
     const s = spec({
@@ -139,13 +138,11 @@ describe('suggestFix', () => {
         { introduced: '2.0.0', fixed: '2.0.4' },
       ],
     });
-    const e = evaluateSpec('1.5.0', s);
-    expect(suggestFix('1.5.0', [e], [s])).toEqual({ kind: 'HIGHER_LINE_ONLY', version: '2.0.4', source: 'GHSA' });
+    expect(suggestFix('1.5.0', [s])).toEqual({ kind: 'HIGHER_LINE_ONLY', version: '2.0.4', source: 'GHSA' });
   });
   it('정보가 없으면 버전을 추측하지 않는다', () => {
     const s = spec({ intervals: [{ introduced: '0' }] });
-    const e = evaluateSpec('1.5.0', s);
-    expect(suggestFix('1.5.0', [e], [s])).toEqual({ kind: 'UNCONFIRMED' });
+    expect(suggestFix('1.5.0', [s])).toEqual({ kind: 'UNCONFIRMED' });
   });
 });
 

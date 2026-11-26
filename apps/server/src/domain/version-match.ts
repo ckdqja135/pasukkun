@@ -188,33 +188,32 @@ export type FixSuggestion =
   /** 패치 미확인 - 버전을 추측하지 않는다 */
   | { kind: 'UNCONFIRMED' };
 
-/** 수정 버전 제안. 일치한 구간의 경계만 사용하고, 없으면 추측하지 않는다. */
-export function suggestFix(
-  installedVersion: string,
-  evaluations: SourceEvaluation[],
-  specs: AffectedSpec[],
-): FixSuggestion {
+/**
+ * 수정 버전 제안. 영향 구간의 경계만 사용하고, 없으면 추측하지 않는다.
+ * 제안하는 버전은 어느 출처의 영향 범위에도 들지 않아야 한다 (출처마다 수정 버전이 다르거나 구간이 겹칠 수 있다).
+ */
+export function suggestFix(installedVersion: string, specs: AffectedSpec[]): FixSuggestion {
   const installed = semver.parse(installedVersion.trim());
   if (!installed) return { kind: 'UNCONFIRMED' };
 
-  for (const evaluation of evaluations) {
-    if (evaluation.result !== 'AFFECTED' || !evaluation.matchedInterval) continue;
-    const candidate = evaluation.matchedInterval.fixed ?? evaluation.matchedInterval.patched;
-    const parsed = candidate ? parseBound(candidate) : null;
-    if (candidate && parsed && semver.compare(parsed, installed) > 0) {
-      return { kind: 'FIXED', version: candidate, source: evaluation.source };
-    }
-  }
-
-  let best: { version: string; parsed: semver.SemVer; source: string } | null = null;
+  type Candidate = { version: string; parsed: semver.SemVer; source: string };
+  const containing: Candidate[] = [];
+  const higher: Candidate[] = [];
   for (const spec of specs) {
     for (const interval of spec.intervals) {
       const candidate = interval.fixed ?? interval.patched;
       const parsed = candidate ? parseBound(candidate) : null;
       if (!candidate || !parsed || semver.compare(parsed, installed) <= 0) continue;
-      if (!best || semver.compare(parsed, best.parsed) < 0) best = { version: candidate, parsed, source: spec.source };
+      const contains = evaluateSpec(installedVersion, { source: spec.source, intervals: [interval], versions: [], unparsed: [] }).result === 'AFFECTED';
+      (contains ? containing : higher).push({ version: candidate, parsed, source: spec.source });
     }
   }
-  if (best) return { kind: 'HIGHER_LINE_ONLY', version: best.version, source: best.source };
+  const stillAffected = (version: string) => specs.some((spec) => evaluateSpec(version, spec).result === 'AFFECTED');
+  const lowestClear = (list: Candidate[]) => [...list].sort((a, b) => semver.compare(a.parsed, b.parsed)).find((c) => !stillAffected(c.version));
+
+  const fixed = lowestClear(containing);
+  if (fixed) return { kind: 'FIXED', version: fixed.version, source: fixed.source };
+  const higherLine = lowestClear([...containing, ...higher]);
+  if (higherLine) return { kind: 'HIGHER_LINE_ONLY', version: higherLine.version, source: higherLine.source };
   return { kind: 'UNCONFIRMED' };
 }

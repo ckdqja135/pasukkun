@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Unlink, XCircle }
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Pill } from '@/components/badges';
-import { GITHUB_STATUS_LABEL, LOCKFILE_FORMAT_LABEL } from '@/components/github-import';
+import { GITHUB_STATUS_LABEL, LOCKFILE_FORMAT_LABEL, useStartGithubImport } from '@/components/github-import';
 import { GithubMark } from '@/components/github-mark';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +27,7 @@ export function GithubSourceCard({ project }: { project: Project }) {
   const github = project.github;
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
+  const relink = useStartGithubImport();
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['project', project.id] });
 
   const sync = useMutation({
@@ -92,6 +93,11 @@ export function GithubSourceCard({ project }: { project: Project }) {
         </dl>
         {github.error ? <p className={github.status === 'DISCONNECTED' ? 'text-sm text-destructive' : 'text-sm text-amber-700 dark:text-amber-400'}>{github.error}</p> : null}
         <div className="flex flex-wrap gap-2">
+          {github.status === 'DISCONNECTED' ? (
+            <Button size="sm" disabled={relink.isPending} onClick={() => relink.mutate()}>
+              <GithubMark /> GitHub 로 다시 연결
+            </Button>
+          ) : null}
           <Button size="sm" variant="outline" disabled={sync.isPending} onClick={() => sync.mutate()}>
             <RefreshCw aria-hidden /> 지금 확인
           </Button>

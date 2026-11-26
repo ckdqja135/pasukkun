@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomToken } from '../common/crypto.js';
+import { isAllowedLogin } from '../auth/allowlist.js';
 import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
@@ -124,6 +125,10 @@ export class DeliveryService {
       }
     }
 
+    // 겹치는 규칙은 먼저 만든 발송 건 하나만 남긴다. 즉시 규칙을 먼저 처리해, 요약 규칙이 즉시 알림을 억제하지 않게 한다.
+    const isImmediate = (target: (typeof targets)[number]) => (target.rule.schedule as { type?: string } | null)?.type === 'IMMEDIATE';
+    targets.sort((a, b) => Number(isImmediate(b)) - Number(isImmediate(a)));
+
     await this.prisma.$transaction(async (tx) => {
       for (const target of targets) {
         for (const link of target.rule.channels) {
@@ -216,6 +221,12 @@ export class DeliveryService {
       await finish({ status: 'FAILED', lastError: `채널 연결이 끊겨 보내지 못했습니다: ${channel.lastError ?? '다시 연결해 주세요.'}` });
       return;
     }
+    // 허용 목록에서 빠진 사용자에게는 보내지 않는다.
+    const owner = await this.prisma.user.findUnique({ where: { id: delivery.userId }, select: { githubLogin: true } });
+    if (!owner || !isAllowedLogin(this.env, owner.githubLogin)) {
+      await finish({ status: 'CANCELLED', lastError: '허용 목록에 없는 사용자라 보내지 않음' });
+      return;
+    }
     const message = await this.messages.build(delivery);
     if (!message) {
       await finish({ status: 'CANCELLED', lastError: '알릴 대상이 더 이상 유효하지 않아 취소됨 (공지 철회, 프로젝트 삭제, 이미 해소됨 등)' });
@@ -239,7 +250,8 @@ export class DeliveryService {
 
     // 규칙에 사용자 문구 틀이 있으면 그 틀로, 없으면 기본 형식으로 보낸다.
     const rule = delivery.kind === 'EVENT' && delivery.ruleId ? await this.prisma.subscriptionRule.findUnique({ where: { id: delivery.ruleId }, select: { template: true } }) : null;
-    const result = await this.channels.send(channel, message, rule?.template && message.values ? renderTemplate(rule.template, message.values) : null);
+    const custom = rule?.template && message.values ? renderTemplate(rule.template, message.values) : null;
+    const result = await this.channels.send(channel, message, custom && message.requiredNotice ? `${message.requiredNotice}\n${custom}` : custom);
     const attempts = delivery.attempts + 1;
 
     if (result.status === 'SENT') {

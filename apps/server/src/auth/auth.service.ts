@@ -4,6 +4,7 @@ import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
 import type { MeDto, UpdateSettingsDto, UserSettingsDto } from './auth.dto.js';
+import { isAllowedLogin } from './allowlist.js';
 import type { GithubProfile } from './github-oauth.client.js';
 
 export interface IssuedSession {
@@ -35,8 +36,13 @@ export class AuthService {
    * 사람은 변하지 않는 GitHub ID 로 식별하고, 아이디(login)는 바뀌면 따라 갱신한다.
    */
   async loginWithGithub(profile: GithubProfile): Promise<IssuedSession> {
-    const allowed = this.env.allowedGithubUsers;
-    if (allowed.length > 0 && !allowed.includes(profile.login.toLowerCase())) throw new LoginRejected('not_allowed');
+    if (!isAllowedLogin(this.env, profile.login)) throw new LoginRejected('not_allowed');
+    if (this.env.allowedGithubUsers.length > 0) {
+      // 허용 목록은 바뀔 수 있는 아이디로 적는다. 이 아이디로 이미 들어온 적 있는 다른 GitHub 계정이 있으면,
+      // 아이디를 넘겨받은 다른 사람일 수 있으므로 막는다. (허용 목록을 쓰는 서버는 사용자가 적어 전부 읽어도 된다.)
+      const others = await this.prisma.user.findMany({ where: { NOT: { githubId: profile.id } }, select: { githubLogin: true } });
+      if (others.some((other) => other.githubLogin.toLowerCase() === profile.login.toLowerCase())) throw new LoginRejected('not_allowed');
+    }
     const user = await this.prisma.user.upsert({
       where: { githubId: profile.id },
       update: { githubLogin: profile.login, name: profile.name, lastLoginAt: new Date() },

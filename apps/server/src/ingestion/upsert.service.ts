@@ -1,4 +1,4 @@
-import { gzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { Injectable, Logger } from '@nestjs/common';
 import { CatalogService } from '../catalog/catalog.service.js';
 import { normalizeEcosystem, normalizePackageName } from '../catalog/catalog.data.js';
@@ -8,11 +8,16 @@ import { PrismaService, type Db } from '../db/prisma.service.js';
 import { SEVERITY_RANK, severityFromScore, type SeverityLevel } from '../domain/cvss.js';
 import type { Interval } from '../domain/version-match.js';
 import { JobService } from '../jobs/job.service.js';
+import { normalizeGhsa } from './adapters/ghsa.adapter.js';
+import { normalizeNvd } from './adapters/nvd.adapter.js';
+import { normalizeOsv } from './adapters/osv.client.js';
 import { normalizeIdentifier, truncate, type NormalizedAdvisory, type TypedIdentifier } from './normalized.js';
 
 export interface UpsertOptions {
   /** false 면 알림 이벤트를 만들지 않는다 (초기 적재, 프로젝트 검사 중 과거 공지 조회) */
   emitEvents: boolean;
+  /** 재평가에서 프로젝트 영향 알림을 만들지. 기본값은 emitEvents 와 같다. */
+  notifyProjects?: boolean;
 }
 
 export interface UpsertResult {
@@ -77,7 +82,7 @@ export class VulnerabilityUpsertService {
     if (identifiers.length === 0) throw new Error(`식별자를 해석할 수 없는 공지: ${advisory.source}:${advisory.sourceId}`);
     const mappings = await this.catalog.mappings();
 
-    return this.prisma.$transaction(
+    const { result, detached } = await this.prisma.$transaction(
       async (tx) => {
         // 1) 명시적 alias 로 연결된 기존 취약점을 찾는다. 제목 유사도로는 합치지 않는다.
         const linked = await tx.vulnerabilityIdentifier.findMany({
@@ -116,6 +121,11 @@ export class VulnerabilityUpsertService {
           });
         }
 
+        // 덮어쓰기 전에 이 레코드가 이전에 주장하던 식별자를 원본에서 읽어 둔다.
+        const previous = existing
+          ? await tx.sourceRecord.findUnique({ where: { id: existing.id }, select: { source: true, sourceId: true, raw: true } })
+          : null;
+
         // 3) 출처 원본과 정규화 결과
         const sourceData = {
           vulnerabilityId,
@@ -137,6 +147,9 @@ export class VulnerabilityUpsertService {
           update: sourceData,
           create: { source: advisory.source, sourceId: advisory.sourceId, ...sourceData },
         });
+
+        // 3-1) 이 출처가 식별자를 뺐다면, 그 식별자로만 이어져 있던 다른 출처 레코드를 떼어 낸다.
+        const detached = previous ? await this.detachUnlinked(tx, vulnerabilityId, record.id, identifiers, previous) : [];
 
         // 4) 이 출처가 제공한 영향 패키지 (한 취약점 ↔ 여러 패키지 관계를 그대로 보존)
         await tx.affectedPackage.deleteMany({ where: { sourceRecordId: record.id } });
@@ -174,27 +187,25 @@ export class VulnerabilityUpsertService {
           });
         }
 
-        // 5) 이 출처의 CVSS (출처·버전별로 모두 보존)
-        await tx.vulnerabilityCvss.deleteMany({
-          where: { vulnerabilityId, OR: [{ source: advisory.source }, { source: { startsWith: `${advisory.source}:` } }] },
-        });
+        // 5) 이 출처 레코드의 CVSS (같은 출처 종류의 다른 레코드 점수는 건드리지 않는다)
+        await tx.vulnerabilityCvss.deleteMany({ where: { sourceRecordId: record.id } });
         const seenCvss = new Set<string>();
         for (const cvss of advisory.cvss) {
           const key = `${cvss.source}|${cvss.version}`;
           if (seenCvss.has(key)) continue;
           seenCvss.add(key);
-          await tx.vulnerabilityCvss.create({ data: { vulnerabilityId, ...cvss } });
+          await tx.vulnerabilityCvss.create({ data: { vulnerabilityId, sourceRecordId: record.id, ...cvss } });
         }
 
         // 6) CPE 제품
         if (advisory.source === 'NVD') {
-          await tx.vulnerabilityProduct.deleteMany({ where: { vulnerabilityId } });
+          await tx.vulnerabilityProduct.deleteMany({ where: { sourceRecordId: record.id } });
           const seenProducts = new Set<string>();
           for (const product of advisory.products) {
             const key = `${product.vendor}:${product.product}`;
             if (seenProducts.has(key)) continue;
             seenProducts.add(key);
-            await tx.vulnerabilityProduct.create({ data: { vulnerabilityId, ...product } });
+            await tx.vulnerabilityProduct.create({ data: { vulnerabilityId, sourceRecordId: record.id, ...product } });
           }
         }
 
@@ -224,19 +235,59 @@ export class VulnerabilityUpsertService {
         }
 
         // 9) 의미 있는 변경이면 영향 프로젝트 재평가를 예약한다.
-        if (after.hasNpmPackage && (created || before?.meaningfulHash !== after.meaningfulHash)) {
+        if ((after.hasNpmPackage || detached.length > 0) && (created || before?.meaningfulHash !== after.meaningfulHash)) {
+          const notifyProjects = options.notifyProjects ?? options.emitEvents;
           await this.jobs.enqueue(
             'reassess-vulnerability',
-            { vulnerabilityId, silent: !options.emitEvents },
-            { dedupeKey: `reassess:${vulnerabilityId}:${options.emitEvents ? 'loud' : 'silent'}` },
+            { vulnerabilityId, silent: !notifyProjects },
+            { dedupeKey: `reassess:${vulnerabilityId}:${notifyProjects ? 'loud' : 'silent'}` },
             tx,
           );
         }
 
-        return { vulnerabilityId, created, changed: true, rangeChanged };
+        return { result: { vulnerabilityId, created, changed: true, rangeChanged }, detached };
       },
       { timeout: 30_000, maxWait: 30_000 },
     );
+    // 떼어 낸 레코드는 원본으로 다시 저장해, 식별자가 가리키는 알맞은 취약점에 연결한다.
+    // 이미 알려진 공지이므로 새 공지 알림은 만들지 않고, 프로젝트 영향은 재평가로 알린다.
+    for (const advisory of detached) await this.upsert(advisory, { emitEvents: false, notifyProjects: true });
+    return result;
+  }
+
+  /**
+   * 출처가 식별자(alias)를 빼면, 지금 저장하는 레코드와 식별자로 이어진 레코드만 이 취약점에 남긴다.
+   * 이어지지 않는 레코드는 지우고 원본을 돌려준다 (호출한 쪽이 다시 저장한다). 어느 레코드도 주장하지 않는 식별자는 지운다.
+   */
+  private async detachUnlinked(
+    tx: Db,
+    vulnerabilityId: string,
+    recordId: string,
+    identifiers: TypedIdentifier[],
+    previous: { source: string; sourceId: string; raw: Uint8Array },
+  ): Promise<NormalizedAdvisory[]> {
+    const current = new Set(identifiers.map((identifier) => identifier.value));
+    if (claimedIdentifiers(previous).every((value) => current.has(value))) return [];
+
+    const records = await tx.sourceRecord.findMany({ where: { vulnerabilityId }, select: { id: true, source: true, sourceId: true, raw: true } });
+    const claims = new Map(records.map((row) => [row.id, row.id === recordId ? current : new Set(claimedIdentifiers(row))]));
+    const kept = new Set([recordId]);
+    const keptValues = new Set(current);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const [id, values] of claims) {
+        if (kept.has(id) || ![...values].some((value) => keptValues.has(value))) continue;
+        kept.add(id);
+        for (const value of values) keptValues.add(value);
+        grew = true;
+      }
+    }
+    await tx.vulnerabilityIdentifier.deleteMany({ where: { vulnerabilityId, value: { notIn: [...keptValues] } } });
+    const others = records.filter((row) => !kept.has(row.id));
+    if (others.length === 0) return [];
+    this.logger.log(`${vulnerabilityId}: 식별자로 이어지지 않는 출처 ${others.length}건을 떼어 냄 (${others.map((row) => `${row.source}:${row.sourceId}`).join(', ')})`);
+    await tx.sourceRecord.deleteMany({ where: { id: { in: others.map((row) => row.id) } } });
+    return others.map((row) => storedAdvisory(row)).filter((advisory): advisory is NormalizedAdvisory => advisory !== null);
   }
 
   private async snapshot(tx: Db, vulnerabilityId: string): Promise<AggregateSnapshot> {
@@ -274,7 +325,6 @@ export class VulnerabilityUpsertService {
     const byPrecedence = [...sources].sort((a, b) => SOURCE_PRECEDENCE.indexOf(a.source) - SOURCE_PRECEDENCE.indexOf(b.source));
     const active = byPrecedence.filter((source) => !source.withdrawn);
     const preferred = active.length > 0 ? active : byPrecedence;
-    const activeSources = new Set(active.map((source) => source.source as string));
 
     const published = sources.map((s) => s.publishedAt).filter((d): d is Date => d !== null);
     const modified = sources.map((s) => s.sourceModifiedAt).filter((d): d is Date => d !== null);
@@ -285,9 +335,7 @@ export class VulnerabilityUpsertService {
     const withdrawnAt = withdrawn ? (current.withdrawnAt ?? new Date()) : null;
 
     // 심각도: 유효한 출처의 CVSS 중 최고 점수 (v3 이상 우선, 없으면 v2). 점수가 없으면 출처 라벨.
-    const cvssRows = (await tx.vulnerabilityCvss.findMany({ where: { vulnerabilityId } })).filter((row) =>
-      activeSources.has(row.source.split(':')[0]),
-    );
+    const cvssRows = await tx.vulnerabilityCvss.findMany({ where: { vulnerabilityId, sourceRecord: { withdrawn: false } } });
     const scored = cvssRows.filter((row) => row.score !== null && row.score > 0);
     const modern = scored.filter((row) => Number(row.version) >= 3);
     const pool = modern.length > 0 ? modern : scored;
@@ -402,20 +450,9 @@ export class VulnerabilityUpsertService {
     await tx.affectedPackage.updateMany({ where: { vulnerabilityId: mergedId }, data: { vulnerabilityId: survivorId } });
     await tx.notificationEvent.updateMany({ where: { vulnerabilityId: mergedId }, data: { vulnerabilityId: survivorId } });
 
-    for (const row of await tx.vulnerabilityCvss.findMany({ where: { vulnerabilityId: mergedId } })) {
-      const clash = await tx.vulnerabilityCvss.findUnique({
-        where: { vulnerabilityId_source_version: { vulnerabilityId: survivorId, source: row.source, version: row.version } },
-      });
-      if (clash) await tx.vulnerabilityCvss.delete({ where: { id: row.id } });
-      else await tx.vulnerabilityCvss.update({ where: { id: row.id }, data: { vulnerabilityId: survivorId } });
-    }
-    for (const row of await tx.vulnerabilityProduct.findMany({ where: { vulnerabilityId: mergedId } })) {
-      await tx.vulnerabilityProduct.upsert({
-        where: { vulnerabilityId_vendor_product: { vulnerabilityId: survivorId, vendor: row.vendor, product: row.product } },
-        update: {},
-        create: { vulnerabilityId: survivorId, vendor: row.vendor, product: row.product },
-      });
-    }
+    // 점수·제품은 출처 레코드 단위로 저장되어 겹치지 않으므로 그대로 옮긴다.
+    await tx.vulnerabilityCvss.updateMany({ where: { vulnerabilityId: mergedId }, data: { vulnerabilityId: survivorId } });
+    await tx.vulnerabilityProduct.updateMany({ where: { vulnerabilityId: mergedId }, data: { vulnerabilityId: survivorId } });
     // 프로젝트별 분석 결과: 같은 (프로젝트, 패키지, 버전) 이 양쪽에 있으면 검토 이력을 살려 하나로 합친다.
     for (const finding of await tx.finding.findMany({ where: { vulnerabilityId: mergedId } })) {
       const clash = await tx.finding.findUnique({
@@ -489,6 +526,20 @@ function dedupeReferences(references: Array<{ url: string; type: string }>): Arr
     if (out.length >= MAX_REFERENCES) break;
   }
   return out;
+}
+
+/** 저장된 원본을 다시 정규화한다. 공지 출처(GHSA, NVD, OSV)가 아니면 null. */
+function storedAdvisory(row: { source: string; raw: Uint8Array }): NormalizedAdvisory | null {
+  const data = JSON.parse(gunzipSync(row.raw).toString('utf8'));
+  if (row.source === 'GHSA') return normalizeGhsa(data);
+  if (row.source === 'NVD') return normalizeNvd(data);
+  if (row.source === 'OSV') return normalizeOsv(data);
+  return null;
+}
+
+/** 출처 레코드가 주장하는 식별자 (원본 기준) */
+function claimedIdentifiers(row: { source: string; sourceId: string; raw: Uint8Array }): string[] {
+  return dedupeIdentifiers(storedAdvisory(row)?.identifiers ?? [row.sourceId]).map((identifier) => identifier.value);
 }
 
 function dedupeIdentifiers(raw: string[]): TypedIdentifier[] {

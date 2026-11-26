@@ -66,8 +66,8 @@ export class ScanService {
           skipped.set(reason, (skipped.get(reason) ?? 0) + 1);
           continue;
         }
-        const name = pkg.name.toLowerCase();
-        distinct.set(`${name}@${pkg.version}`, { name, version: pkg.version });
+        // OSV 는 npm 패키지명의 대소문자를 구분한다 (예: JSONStream). lockfile 에 적힌 이름 그대로 조회한다.
+        distinct.set(`${pkg.name}@${pkg.version}`, { name: pkg.name, version: pkg.version });
       }
       const queries = [...distinct.values()];
       await this.prisma.scanRun.update({ where: { id: scanId }, data: { packagesTotal: queries.length } });
@@ -112,7 +112,9 @@ export class ScanService {
           try {
             const record = await this.osv.getVulnerability(id);
             // 검사 중 조회한 과거 공지는 "신규 취약점" 알림 대상이 아니다.
-            await this.upserts.upsert(normalizeOsv(record), { emitEvents: false });
+            // 다른 프로젝트에는 새로 생긴 일치일 수 있으므로 재평가에서는 프로젝트 알림을 만든다.
+            // 검사 중인 프로젝트는 같은 작업 lane 에서 이 검사가 끝난 뒤 재평가되므로 결과가 이미 있어 중복 알림이 생기지 않는다.
+            await this.upserts.upsert(normalizeOsv(record), { emitEvents: false, notifyProjects: true });
           } catch (error) {
             failed.push(id);
             this.logger.warn(`OSV 상세 조회 실패 ${id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -138,13 +140,15 @@ export class ScanService {
         osvHits = new Map();
         batch.forEach((hits, index) => {
           const query = queries[index];
-          const set = new Set<string>();
+          // 평가는 소문자 이름으로 패키지를 찾는다. 대소문자만 다른 설치가 있으면 보고를 합친다.
+          const key = `${query.name.toLowerCase()}@${query.version}`;
+          const set = osvHits!.get(key) ?? new Set<string>();
           for (const hit of hits) {
             const vulnerabilityId = idMap.get(hit.id);
             if (vulnerabilityId) set.add(vulnerabilityId);
             else if (!unresolvedIds.includes(hit.id)) unresolvedIds.push(hit.id);
           }
-          osvHits!.set(`${query.name}@${query.version}`, set);
+          osvHits!.set(key, set);
         });
         if (unresolvedIds.length > 0) {
           problems.push(`상세를 확인하지 못해 결과에 반영되지 않은 OSV 항목 ${unresolvedIds.length}건 (${unresolvedIds.slice(0, 5).join(', ')})`);

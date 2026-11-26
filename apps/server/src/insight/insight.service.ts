@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import semver from 'semver';
 import { PrismaService } from '../db/prisma.service.js';
 import { PRIORITY_RANK } from '../domain/priority.js';
+import { evaluateSpec, type AffectedSpec, type Interval } from '../domain/version-match.js';
 import { VulnerabilityService } from '../vulnerability/vulnerability.service.js';
 import type { CalendarDto, CalendarEventDto, CalendarQueryDto, PackageRemediationDto, PackageRemediationListDto, PublicNoticeDto } from './insight.dto.js';
 
@@ -20,6 +21,18 @@ const MAX_FINDINGS = 5000;
 const MAX_PACKAGE_FINDINGS = 20_000;
 const MAX_KEV = 500;
 const MAX_NOTICES = 300;
+const CHUNK = 500;
+
+/**
+ * 올릴 버전이 같은 패키지의 다른 공지 영향 범위에 들면, 공지들의 수정 버전 중 어느 범위에도 들지 않는 가장 낮은 버전을 고른다.
+ * 그런 버전이 없으면 null (패치 미확인). 버전을 추측하지 않는다.
+ */
+function clearTarget(target: string, specs: AffectedSpec[]): string | null {
+  const affected = (version: string) => specs.some((spec) => evaluateSpec(version, spec).result === 'AFFECTED');
+  const bounds = specs.flatMap((spec) => spec.intervals.map((interval) => interval.fixed ?? interval.patched));
+  const candidates = [target, ...bounds.filter((v): v is string => typeof v === 'string' && semver.valid(v) !== null && semver.gt(v, target))];
+  return candidates.sort(semver.compare).find((version) => !affected(version)) ?? null;
+}
 
 @Injectable()
 export class InsightService {
@@ -37,6 +50,7 @@ export class InsightService {
         version: true,
         fixedVersion: true,
         priority: true,
+        packageId: true,
         package: { select: { name: true } },
         project: { select: { id: true, name: true } },
         vulnerability: { select: { id: true, title: true, kevAddedAt: true } },
@@ -47,12 +61,14 @@ export class InsightService {
     const truncated = rows.length > MAX_PACKAGE_FINDINGS;
     if (truncated) rows.length = MAX_PACKAGE_FINDINGS;
     const groups = new Map<string, PackageRemediationDto>();
+    const packageIdByKey = new Map<string, string>();
     for (const row of rows) {
       const key = `${row.package.name}@${row.version}`;
       const group =
         groups.get(key) ??
         ({ packageName: row.package.name, installedVersion: row.version, targetVersion: null, findingCount: 0, withoutFixCount: 0, projects: [], topPriority: 'LOW', hasKev: false, findings: [] } as PackageRemediationDto);
       groups.set(key, group);
+      packageIdByKey.set(key, row.packageId);
       group.findingCount += 1;
       const fixed = row.fixedVersion && semver.valid(row.fixedVersion) ? row.fixedVersion : null;
       if (!fixed) group.withoutFixCount += 1;
@@ -72,6 +88,29 @@ export class InsightService {
         kev,
       });
     }
+
+    // 올릴 버전이 다른 공지 기준으로 여전히 영향 범위에 들지 않는지 확인한다.
+    const specsByPackage = new Map<string, AffectedSpec[]>();
+    const packageIds = [...new Set(packageIdByKey.values())];
+    for (let offset = 0; offset < packageIds.length; offset += CHUNK) {
+      const affectedRows = await this.prisma.affectedPackage.findMany({
+        where: { packageId: { in: packageIds.slice(offset, offset + CHUNK) }, sourceRecord: { withdrawn: false }, vulnerability: { withdrawnAt: null } },
+        select: { packageId: true, intervals: true, versions: true, unparsed: true, sourceRecord: { select: { source: true } } },
+      });
+      for (const row of affectedRows) {
+        const spec: AffectedSpec = {
+          source: row.sourceRecord.source,
+          intervals: (row.intervals ?? []) as unknown as Interval[],
+          versions: (row.versions ?? []) as unknown as string[],
+          unparsed: (row.unparsed ?? []) as unknown as string[],
+        };
+        specsByPackage.set(row.packageId, [...(specsByPackage.get(row.packageId) ?? []), spec]);
+      }
+    }
+    for (const [key, group] of groups) {
+      if (group.targetVersion) group.targetVersion = clearTarget(group.targetVersion, specsByPackage.get(packageIdByKey.get(key)!) ?? []);
+    }
+
     const items = [...groups.values()].sort(
       (a, b) => PRIORITY_RANK[b.topPriority] - PRIORITY_RANK[a.topPriority] || Number(b.hasKev) - Number(a.hasKev) || b.findingCount - a.findingCount,
     );

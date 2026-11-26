@@ -15,7 +15,11 @@ export interface NotificationMessage {
   footer: string;
   /** 사용자 문구 틀에 넣을 값. 없으면(요약 등) 틀을 쓰지 않고 기본 형식으로 보낸다. */
   values?: TemplateValues;
+  /** 사용자 문구 틀을 써도 빠지면 안 되는 안내. 틀로 만든 문구 앞에 붙인다. */
+  requiredNotice?: string;
 }
+
+export const MALICIOUS_NOTICE = '이 버전에는 악성 코드가 들어 있습니다. 버전을 올리는 것으로 끝나지 않으니 패키지를 제거하고, 설치된 PC 와 CI 에서 쓰던 토큰·키를 교체하세요.';
 
 export const EVENT_HEADINGS: Record<string, string> = {
   TECH_NEW_VULN: '신규 취약점',

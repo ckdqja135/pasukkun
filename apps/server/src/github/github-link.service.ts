@@ -100,6 +100,18 @@ export class GithubLinkService {
       where: { id: request.id },
       data: { status: 'READY', repos: repos as unknown as object[], expiresAt: new Date(Date.now() + LINK_TTL_MS) },
     });
+    // 지금 접근할 수 있는 저장소의 연결은 접근 확인 시각을 새로 하고, 끊겨 있던 연결은 바로 다시 확인한다.
+    // 목록에는 상한이 있고 보관된 저장소는 빠지므로, 목록에 없다는 이유만으로 끊지는 않는다 (확인 주기가 지나면 멈춘다).
+    const accessible = new Set(repos.map((repo) => repo.repoId));
+    const verified = (await this.prisma.projectRepoSource.findMany({ where: { project: { userId } }, select: { projectId: true, repoId: true, status: true } })).filter(
+      (source) => accessible.has(source.repoId),
+    );
+    if (verified.length > 0) {
+      await this.prisma.projectRepoSource.updateMany({ where: { projectId: { in: verified.map((source) => source.projectId) } }, data: { accessVerifiedAt: new Date() } });
+      for (const source of verified.filter((row) => row.status === 'DISCONNECTED')) {
+        await this.jobs.enqueue('github-sync', { projectId: source.projectId }, { dedupeKey: syncJobKey(source.projectId), maxAttempts: 2 });
+      }
+    }
     return { linkId: request.id };
   }
 

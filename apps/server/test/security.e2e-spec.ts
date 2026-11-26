@@ -341,8 +341,9 @@ describe('인증과 접근 제어', () => {
         expect(rejected.headers.location).toBe('http://localhost:5273/?login_error=not_allowed');
         expect(cookieNamed(rejected, 'psk_session')).toBeUndefined();
         expect(await ctx.get(PrismaService).user.count({ where: { githubLogin: 'outsider' } })).toBe(0);
-        // 대소문자는 구분하지 않는다.
-        const allowed = await ctx.githubLogin('user:Alice:9999');
+        // 대소문자는 구분하지 않는다. (같은 아이디의 다른 GitHub 계정은 막으므로, 이미 가입한 alice 의 GitHub ID 로 들어온다.)
+        const aliceGithubId = (await ctx.get(PrismaService).user.findFirstOrThrow({ where: { githubLogin: 'alice' } })).githubId;
+        const allowed = await ctx.githubLogin(`user:Alice:${aliceGithubId}`);
         expect(allowed.headers.location).toBe('http://localhost:5273/');
       } finally {
         env.allowedGithubUsers = [];
