@@ -3991,6 +3991,10 @@
           "kevListed": {
             "type": "boolean"
           },
+          "malicious": {
+            "type": "boolean",
+            "description": "악성 패키지 공지(OSV MAL-) 여부. 취약점이 아니라 악성 코드가 들어 있는 버전"
+          },
           "epssScore": {
             "type": "number",
             "nullable": true
@@ -4060,6 +4064,7 @@
           "severity",
           "cvssScore",
           "kevListed",
+          "malicious",
           "epssScore",
           "fixedVersion",
           "remediationStatus",
@@ -4257,6 +4262,10 @@
           "kevListed": {
             "type": "boolean"
           },
+          "malicious": {
+            "type": "boolean",
+            "description": "악성 패키지 공지(OSV MAL-) 여부. 취약점이 아니라 악성 코드가 들어 있는 버전"
+          },
           "epssScore": {
             "type": "number",
             "nullable": true
@@ -4353,6 +4362,7 @@
           "severity",
           "cvssScore",
           "kevListed",
+          "malicious",
           "epssScore",
           "fixedVersion",
           "remediationStatus",

@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ConditionBadge, KevBadge, MatchBadge, PriorityBadge, SeverityBadge, StatusBadge } from '@/components/badges';
+import { ConditionBadge, KevBadge, MaliciousBadge, MatchBadge, PriorityBadge, SeverityBadge, StatusBadge } from '@/components/badges';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Schemas } from '@/lib/api';
@@ -38,6 +38,7 @@ export function FindingTable({ items, showProject = true, compact = false }: { i
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <span className="font-mono">{finding.identifiers.slice(0, 2).join(' · ')}</span>
                   {showProject ? <span>· {finding.projectName}</span> : null}
+                  {finding.malicious ? <MaliciousBadge /> : null}
                   {finding.kevListed ? <KevBadge /> : null}
                 </div>
               </TableCell>
@@ -80,6 +81,7 @@ function CompactFindingList({ items }: { items: Finding[] }) {
           <div className="flex flex-wrap items-center gap-1.5">
             <PriorityBadge priority={finding.priority} />
             <SeverityBadge severity={finding.severity} score={finding.cvssScore} />
+            {finding.malicious ? <MaliciousBadge /> : null}
             {finding.kevListed ? <KevBadge /> : null}
           </div>
           <Link to={`/findings/${finding.id}`} className="block font-medium underline-offset-2 outline-none hover:underline focus-visible:underline">

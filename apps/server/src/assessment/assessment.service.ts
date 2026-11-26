@@ -4,6 +4,7 @@ import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
 import { deriveConditions } from '../domain/conditions.js';
+import { isMaliciousAdvisory } from '../domain/malicious.js';
 import { computePriority, PRIORITY_RANK, type PriorityLevel } from '../domain/priority.js';
 import {
   combineEvaluations,
@@ -148,14 +149,14 @@ export class AssessmentService {
     const vulnerabilityIds = [...new Set(work.map((item) => item.vulnerabilityId))];
     const vulnerabilities = new Map<
       string,
-      { id: string; withdrawnAt: Date | null; kevAddedAt: Date | null; cvssScore: number | null; cvssVector: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'; epssScore: number | null }
+      { id: string; withdrawnAt: Date | null; kevAddedAt: Date | null; malicious: boolean; cvssScore: number | null; cvssVector: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'; epssScore: number | null }
     >();
     for (const ids of chunk(vulnerabilityIds, CHUNK)) {
       const found = await this.prisma.vulnerability.findMany({
         where: { id: { in: ids } },
-        select: { id: true, withdrawnAt: true, kevAddedAt: true, cvssScore: true, cvssVector: true, severity: true, epssScore: true },
+        select: { id: true, withdrawnAt: true, kevAddedAt: true, cvssScore: true, cvssVector: true, severity: true, epssScore: true, identifiers: { select: { value: true } } },
       });
-      for (const row of found) vulnerabilities.set(row.id, row);
+      for (const { identifiers, ...row } of found) vulnerabilities.set(row.id, { ...row, malicious: isMaliciousAdvisory(identifiers) });
     }
 
     const existingRows = await this.prisma.finding.findMany({
@@ -250,6 +251,7 @@ export class AssessmentService {
                   exploitCondition,
                   needsRecheck,
                   kevListed: vulnerability.kevAddedAt !== null,
+                  malicious: vulnerability.malicious,
                   cvssScore: vulnerability.cvssScore,
                   severityLabel: vulnerability.severity,
                   epssScore: vulnerability.epssScore,

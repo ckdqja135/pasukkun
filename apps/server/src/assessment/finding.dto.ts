@@ -114,6 +114,8 @@ export class FindingListItemDto {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
   cvssScore: number | null;
   kevListed: boolean;
+  /** 악성 패키지 공지(OSV MAL-) 여부. 취약점이 아니라 악성 코드가 들어 있는 버전 */
+  malicious: boolean;
   epssScore: number | null;
   /** 확인된 수정 버전. 없으면 null (패치 미확인) */
   fixedVersion: string | null;

@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   Ban,
+  Biohazard,
   Check,
   CheckCircle2,
   CircleDashed,
@@ -139,6 +140,14 @@ export function KevBadge({ date }: { date?: string | null }) {
   return (
     <Pill tone="red" icon={Flame} title="CISA KEV 에 등재되어 실제 악용이 확인된 취약점입니다.">
       KEV 등재{date ? ` ${date.slice(0, 10)}` : ''}
+    </Pill>
+  );
+}
+
+export function MaliciousBadge() {
+  return (
+    <Pill tone="red" icon={Biohazard} title="악성 코드가 들어 있는 버전으로 공지된 패키지입니다 (OpenSSF 악성 패키지 DB).">
+      악성 패키지
     </Pill>
   );
 }

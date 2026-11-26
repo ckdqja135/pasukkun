@@ -3,6 +3,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
+import { isMaliciousAdvisory } from '../domain/malicious.js';
 import { computePriority } from '../domain/priority.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type {
@@ -104,6 +105,7 @@ export class FindingService {
       severity: row.vulnerability.severity,
       cvssScore: row.vulnerability.cvssScore,
       kevListed: row.vulnerability.kevAddedAt !== null,
+      malicious: isMaliciousAdvisory(row.vulnerability.identifiers),
       epssScore: row.vulnerability.epssScore,
       fixedVersion: row.fixedVersion,
       remediationStatus: row.remediationStatus,
@@ -179,6 +181,7 @@ export class FindingService {
         exploitCondition: dto.verdict,
         needsRecheck: false,
         kevListed: vulnerability.kevAddedAt !== null,
+        malicious: isMaliciousAdvisory(finding.vulnerability.identifiers),
         cvssScore: vulnerability.cvssScore,
         severityLabel: vulnerability.severity,
         epssScore: vulnerability.epssScore,

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/app-shell';
-import { ConditionBadge, KevBadge, MatchBadge, PriorityBadge, SeverityBadge, StatusBadge } from '@/components/badges';
+import { ConditionBadge, KevBadge, MaliciousBadge, MatchBadge, PriorityBadge, SeverityBadge, StatusBadge } from '@/components/badges';
 import { NativeSelect } from '@/components/native-select';
 import { ErrorState, LoadingState } from '@/components/states';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -89,6 +89,7 @@ export function FindingDetailPage() {
         <ConditionBadge condition={f.exploitCondition} />
         <PriorityBadge priority={f.priority} />
         <SeverityBadge severity={f.severity} score={f.cvssScore} />
+        {f.malicious ? <MaliciousBadge /> : null}
         {f.kevListed ? <KevBadge /> : null}
         <StatusBadge status={f.remediationStatus} />
       </div>
@@ -236,7 +237,16 @@ export function FindingDetailPage() {
               <CardTitle>대응 방법</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {evidence.fix?.kind === 'FIXED' ? (
+              {f.malicious ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">악성 패키지 - 버전을 올리는 것으로 끝나지 않습니다.</p>
+                  <ol className="list-decimal space-y-1 pl-4">
+                    <li>패키지를 제거하거나, 공지에서 영향이 없다고 확인된 버전으로 고정하세요.</li>
+                    <li>이 버전이 설치된 PC 와 CI 에서 쓰던 토큰·키(npm, GitHub, 클라우드 등)를 교체하세요.</li>
+                    <li>설치 이후 실행된 빌드와 배포 기록에 이상이 없는지 확인하세요.</li>
+                  </ol>
+                </div>
+              ) : evidence.fix?.kind === 'FIXED' ? (
                 <p>
                   확인된 수정 버전: <span className="font-mono font-medium">{f.packageName}@{evidence.fix.version}</span>
                   <span className="block text-xs text-muted-foreground">현재 설치 버전이 속한 영향 구간의 경계에서 확인했습니다 (출처 {evidence.fix.source}).</span>
@@ -249,7 +259,7 @@ export function FindingDetailPage() {
                 <p>패치 미확인 - 수정 버전 정보가 없습니다. 버전을 추측하지 않으니 공지 원문에서 완화 방법을 확인하세요.</p>
               )}
               {!f.isDirect ? <p className="text-xs text-muted-foreground">전이 의존성입니다. 어떤 직접 의존성을 올려야 하는지는 자동으로 계산하지 않습니다. 위 의존성 경로를 참고하세요.</p> : null}
-              <p className="text-xs text-muted-foreground">패키지를 올린 뒤에는 새 package-lock.json 을 등록해 재검사로 해소를 확인하세요.</p>
+              <p className="text-xs text-muted-foreground">패키지를 {f.malicious ? '제거하거나 바꾼' : '올린'} 뒤에는 새 package-lock.json 을 등록해 재검사로 해소를 확인하세요.</p>
             </CardContent>
           </Card>
 

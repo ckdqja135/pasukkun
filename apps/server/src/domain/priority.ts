@@ -3,7 +3,7 @@
  * 취약점 자체의 심각도와 별개로, 프로젝트 관점에서 얼마나 먼저 볼지를 정한다.
  * 규칙은 위에서부터 첫 일치를 적용하고, 그 뒤에 보정을 적용한다.
  */
-export const PRIORITY_RULE_VERSION = '2026-11-22.1';
+export const PRIORITY_RULE_VERSION = '2026-11-26.1';
 
 export type PriorityLevel = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW' | 'NEEDS_CHECK';
 
@@ -22,6 +22,8 @@ export interface PriorityInput {
   /** 검토 이후 구성·공지가 바뀌어 재확인이 필요한 상태 */
   needsRecheck: boolean;
   kevListed: boolean;
+  /** 악성 패키지 공지(OSV MAL-) 여부 */
+  malicious: boolean;
   /** 출처별 CVSS 중 최고 점수. 없으면 null */
   cvssScore: number | null;
   /** CVSS 점수가 없을 때 출처가 준 심각도 라벨 */
@@ -45,6 +47,7 @@ export interface PriorityRuleDoc {
 export const PRIORITY_RULES: PriorityRuleDoc[] = [
   { id: 'RU', condition: '버전 매칭이 판단 불가', result: '확인 필요' },
   { id: 'R0', condition: '수동 검토로 악용 조건 불충족이 확정되고 재확인이 필요하지 않음', result: '낮음' },
+  { id: 'RM', condition: '악성 패키지 공지 (OSV MAL-)', result: '긴급' },
   { id: 'R1', condition: 'CISA KEV 등재', result: '긴급' },
   { id: 'R2', condition: 'CVSS 9.0 이상이고 운영 환경을 포함하며 노출이 공개 또는 알 수 없음', result: '긴급' },
   { id: 'R3', condition: 'CVSS 7.0 이상 또는 EPSS 가 임계값 이상', result: '높음' },
@@ -55,7 +58,7 @@ export const PRIORITY_RULES: PriorityRuleDoc[] = [
 
 export const PRIORITY_ADJUSTMENTS: PriorityRuleDoc[] = [
   { id: 'A1', condition: '수동 검토로 악용 조건 충족이 확정됨', result: '한 단계 상승' },
-  { id: 'A2', condition: '내부 전용이고 운영 환경을 포함하지 않음 (R1 제외)', result: '한 단계 하강' },
+  { id: 'A2', condition: '내부 전용이고 운영 환경을 포함하지 않음 (RM, R1 제외)', result: '한 단계 하강' },
 ];
 
 export interface PriorityResult {
@@ -130,7 +133,11 @@ export function computePriority(input: PriorityInput, config: PriorityConfig): P
 
   let base: PriorityLevel;
   let ruleId: string;
-  if (input.kevListed) {
+  if (input.malicious) {
+    base = 'URGENT';
+    ruleId = 'RM';
+    explanation.push('악성 코드가 들어 있는 버전으로 공지된 패키지입니다. 개발 PC 나 CI 에 설치되는 것만으로 피해가 생길 수 있습니다.');
+  } else if (input.kevListed) {
     base = 'URGENT';
     ruleId = 'R1';
     explanation.push('CISA KEV 에 등재되어 실제 악용이 확인된 취약점입니다.');
@@ -173,15 +180,15 @@ export function computePriority(input: PriorityInput, config: PriorityConfig): P
     result = raised;
     explanation.push('수동 검토에서 악용 조건 충족이 확인되어 한 단계 올렸습니다.');
   }
-  if (ruleId !== 'R1' && input.exposure === 'INTERNAL' && input.environments.length > 0 && !includesProduction) {
+  if (ruleId !== 'RM' && ruleId !== 'R1' && input.exposure === 'INTERNAL' && input.environments.length > 0 && !includesProduction) {
     const lowered = shift(result, -1);
     if (lowered !== result) adjustments.push('A2');
     result = lowered;
     explanation.push('내부 전용이고 운영 환경이 아니어서 한 단계 내렸습니다.');
   }
-  if (input.exploitCondition === 'NOT_ANALYZED' || input.exploitCondition === 'NEEDS_CHECK') {
+  if (!input.malicious && (input.exploitCondition === 'NOT_ANALYZED' || input.exploitCondition === 'NEEDS_CHECK')) {
     explanation.push('악용 조건은 아직 확인되지 않았습니다. 버전 일치만으로 실제 악용 가능성을 확정하지 않습니다.');
   }
-  if (!input.patchAvailable) explanation.push('확인된 수정 버전이 없어 완화책 검토가 필요합니다.');
+  if (!input.malicious && !input.patchAvailable) explanation.push('확인된 수정 버전이 없어 완화책 검토가 필요합니다.');
   return finish(result, ruleId);
 }

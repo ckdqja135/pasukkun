@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { AppEnv } from '../config/env.js';
 import { APP_ENV } from '../db/db.module.js';
 import { PrismaService } from '../db/prisma.service.js';
+import { isMaliciousAdvisory } from '../domain/malicious.js';
 import type { Interval } from '../domain/version-match.js';
 import { describeProjectCounts, type BriefingContent } from './briefing.service.js';
 import type { TemplateValues } from './template.js';
@@ -67,6 +68,9 @@ export class MessageBuilder {
 
   private commonFields(v: NonNullable<Awaited<ReturnType<MessageBuilder['loadVulnerability']>>>): Array<{ label: string; value: string }> {
     const fields: Array<{ label: string; value: string }> = [];
+    if (isMaliciousAdvisory(v.identifiers)) {
+      fields.push({ label: '악성 패키지', value: '이 버전에는 악성 코드가 들어 있습니다. 버전을 올리는 것으로 끝나지 않으니 패키지를 제거하고, 설치된 PC 와 CI 에서 쓰던 토큰·키를 교체하세요.' });
+    }
     const score = v.cvssScore !== null ? ` · CVSS ${v.cvssVersion ?? ''} ${v.cvssScore.toFixed(1)}`.replace('  ', ' ') : ' · CVSS 미제공';
     fields.push({ label: '심각도', value: `${SEVERITY_LABEL[v.severity]}${score}` });
     if (v.kevAddedAt) fields.push({ label: '실제 악용', value: `CISA KEV 등재 (${v.kevAddedAt.toISOString().slice(0, 10)})` });

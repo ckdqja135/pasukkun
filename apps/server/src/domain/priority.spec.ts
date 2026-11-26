@@ -6,6 +6,7 @@ const base: PriorityInput = {
   exploitCondition: 'NOT_ANALYZED',
   needsRecheck: false,
   kevListed: false,
+  malicious: false,
   cvssScore: 5.0,
   severityLabel: 'MEDIUM',
   epssScore: 0.001,
@@ -68,6 +69,16 @@ describe('우선순위 규칙', () => {
     const kev = run({ kevListed: true, exposure: 'INTERNAL', environments: ['TEST'] });
     expect(kev.priority).toBe('URGENT');
     expect(kev.adjustments).toEqual([]);
+  });
+
+  it('RM: 악성 패키지 공지는 점수가 없어도 긴급이고, 내부 전용·비운영이어도 내리지 않는다', () => {
+    const malicious = { malicious: true, cvssScore: null, severityLabel: 'UNKNOWN' as const, epssScore: null, patchAvailable: false };
+    const result = run(malicious);
+    expect(result.priority).toBe('URGENT');
+    expect(result.ruleId).toBe('RM');
+    const internal = run({ ...malicious, exposure: 'INTERNAL', environments: ['DEVELOPMENT'] });
+    expect(internal.priority).toBe('URGENT');
+    expect(internal.adjustments).toEqual([]);
   });
 
   it('환경 정보가 비어 있으면 운영 포함으로 보수적으로 본다', () => {

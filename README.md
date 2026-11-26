@@ -200,6 +200,7 @@ Results for all projects in one place. Narrow down by project; the filters are t
 | 악용 조건 (Exploit conditions) | Not analyzed / needs checking / conditions met / conditions not met |
 | 대응 우선순위 (Priority) | How soon to act for this project: urgent, high, needs checking, medium, low |
 | 심각도 (Severity) | Severity of the vulnerability itself (different from priority) |
+| 악성 패키지 (Malicious package) | This version is reported to contain malicious code. Always urgent, even in internal or development-only projects |
 | 직접 / 전이 의존성 (Direct / transitive) | Installed directly, or pulled in by another package |
 | 개발 의존성 (Dev dependency) | Used for development. Not excluded from risk |
 
@@ -210,7 +211,7 @@ Results for all projects in one place. Narrow down by project; the filters are t
 Click an item.
 
 - **확인된 사실 - 버전 매칭** (Facts - version match): why this was decided, with the installed version, affected range, assessment per source, install location, and dependency path.
-- **대응 방법** (Remediation): the fixed version to upgrade to from this version. If only a newer release line has a fix, it says so. If no fix information exists, it shows "patch not confirmed" and does not guess.
+- **대응 방법** (Remediation): the fixed version to upgrade to from this version. If only a newer release line has a fix, it says so. If no fix information exists, it shows "patch not confirmed" and does not guess. For a **악성 패키지** (Malicious package), it shows what to do instead: remove the package or pin a version the advisory marks as safe, replace the tokens and keys used on computers and CI where it was installed, and check the builds and deployments run since then.
 - **대응 우선순위** (Priority): which rule produced this level. **규칙 보기** (View rules) shows all rules.
 
 **Exploit condition review** (아직 확인하지 못한 조건)
@@ -426,6 +427,7 @@ Rarely, the same notification may arrive twice.
 ## Good to know
 
 - **A matching version is not proof of exposure.** Check whether you use the vulnerable feature with the exploit condition review.
+- **A malicious package is not a vulnerability.** The code in that version is itself harmful, so upgrading alone is not enough. Follow the steps in **대응 방법** (Remediation).
 - **No CVSS score does not mean low risk.** Items without a score are kept high for review.
 - **Not in KEV does not mean not exploited.** KEV only lists confirmed cases.
 - **EPSS is not the chance that your project gets attacked.** It estimates how likely the vulnerability is to be exploited somewhere in the next 30 days.
