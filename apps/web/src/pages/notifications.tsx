@@ -318,25 +318,67 @@ function TelegramConnectDialog({ botUsername, onClose, onConnected }: { botUsern
   );
 }
 
-/** 착착: 서버 설정의 착착 봇 받는 주소로 확인 메시지를 보내면 연결된다. */
+/** 착착: 서버의 착착 봇이 들어가 있는 채널 중 하나를 골라 연결한다. 채널마다 따로 연결할 수 있다. */
 function ChakchakConnectDialog({ onClose, onConnected }: { onClose: () => void; onConnected: () => void }) {
+  const options = useQuery({ queryKey: ['chakchak-channels'], queryFn: () => unwrap(api.GET('/api/v1/channels/chakchak/channels')), retry: false });
+  const [name, setName] = useState('');
+  const [channel, setChannel] = useState('');
   const connect = useMutation({
-    mutationFn: (name: string) => unwrap(api.POST('/api/v1/channels/chakchak', { body: { name } })),
+    mutationFn: () => unwrap(api.POST('/api/v1/channels/chakchak', { body: { name: name.trim() || `착착 #${channel}`, channel } })),
     onSuccess: () => {
       onConnected();
-      toast.success('착착이 연결되었습니다. 봇이 채널에 확인 메시지를 올렸습니다.');
+      toast.success('착착이 연결되었습니다. 그 채널에 확인 메시지를 올렸습니다.');
       onClose();
     },
     onError: (error) => toast.error(error.message),
   });
+  useEffect(() => {
+    if (!channel && options.data?.[0]) setChannel(options.data[0].name);
+  }, [options.data, channel]);
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>착착 연결</DialogTitle>
-          <DialogDescription>착착에서 이 서버용으로 만든 봇이, 초대된 채널에 알림을 올립니다. 연결하면 그 채널에 확인 메시지를 한 건 올립니다.</DialogDescription>
+          <DialogDescription>착착 봇이 들어가 있는 채널 중 알림 받을 곳을 고릅니다. 프로젝트마다 다른 채널을 연결할 수 있습니다.</DialogDescription>
         </DialogHeader>
-        <NameStep defaultName="착착" submitLabel="확인 메시지 보내고 연결" pending={connect.isPending} onSubmit={(name) => connect.mutate(name)} />
+        {!options.data ? (
+          options.isError ? <ErrorState error={options.error} onRetry={() => options.refetch()} /> : <LoadingState />
+        ) : options.data.length === 0 ? (
+          <EmptyState title="봇이 들어가 있는 채널이 없습니다" description="착착에서 봇을 알림 받을 채널에 초대한 뒤 다시 시도해 주세요." />
+        ) : (
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              connect.mutate();
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="cc-channel">채널</Label>
+              <NativeSelect id="cc-channel" value={channel} onChange={(e) => setChannel(e.target.value)}>
+                {options.data.map((option) => (
+                  <option key={option.name} value={option.name}>
+                    #{option.name}
+                    {option.private ? ' (비공개)' : ''}
+                  </option>
+                ))}
+              </NativeSelect>
+              <p className="text-xs text-muted-foreground">연결하면 이 채널에 확인 메시지를 한 번 올립니다.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cc-name">채널 이름</Label>
+              <Input id="cc-name" maxLength={60} placeholder={channel ? `착착 #${channel}` : '착착'} value={name} onChange={(e) => setName(e.target.value)} />
+              <p className="text-xs text-muted-foreground">구독 규칙에서 고를 때 보이는 이름입니다. 비워 두면 채널 이름을 씁니다.</p>
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={!channel || connect.isPending}>
+                이 채널로 연결
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

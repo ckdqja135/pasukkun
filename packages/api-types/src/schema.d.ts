@@ -447,6 +447,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/channels/chakchak/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 착착: 봇이 들어가 있는 채널 목록 */
+        get: operations["NotificationController_chakchakChannels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/channels/chakchak": {
         parameters: {
             query?: never;
@@ -456,7 +473,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 착착 연결: 서버 설정의 착착 봇 받는 주소로 확인 메시지를 보내고 채널을 만든다. */
+        /** 착착 연결: 고른 채널에 확인 메시지를 올리고 채널을 만든다. */
         post: operations["NotificationController_connectChakchak"];
         delete?: never;
         options?: never;
@@ -1477,7 +1494,7 @@ export interface components {
             telegramBotUsername: string | null;
             /** @description 서비스 디스코드 봇이 설정되어 있는지 */
             discord: boolean;
-            /** @description 착착 커스텀 봇의 받는 주소가 설정되어 있는지 */
+            /** @description 착착 커스텀 봇이 설정되어 있는지 */
             chakchak: boolean;
         };
         ChannelDto: {
@@ -1523,6 +1540,18 @@ export interface components {
             requestId: string;
             /** @description 디스코드에서 봇을 넣을 서버를 고르는 주소 */
             url: string;
+        };
+        ChakchakChannelOptionDto: {
+            /** @description 착착 채널 이름 */
+            name: string;
+            /** @description 비공개 채널인지 */
+            private: boolean;
+        };
+        ConnectChakchakDto: {
+            /** @description 화면에 보일 이름 (예: web 보안) */
+            name: string;
+            /** @description 알림을 받을 착착 채널 이름 (봇이 들어가 있는 채널) */
+            channel: string;
         };
         ChannelLinkStatusDto: {
             requestId: string;
@@ -2797,6 +2826,25 @@ export interface operations {
             };
         };
     };
+    NotificationController_chakchakChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChakchakChannelOptionDto"][];
+                };
+            };
+        };
+    };
     NotificationController_connectChakchak: {
         parameters: {
             query?: never;
@@ -2806,7 +2854,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ChannelLinkInputDto"];
+                "application/json": components["schemas"]["ConnectChakchakDto"];
             };
         };
         responses: {

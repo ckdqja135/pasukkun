@@ -5,18 +5,34 @@ import type { NotificationMessage } from '../message.js';
 import { truncateText, type FetchLike, type NotificationProvider, type SendResult, type Tone } from './provider.js';
 
 /**
- * 착착 커스텀 봇.
- * 착착에서 봇을 만들어 채널에 초대하고 [알림 받기]로 만든 받는 주소(토큰 포함)를 서버 설정(CHAKCHAK_BOT_URL)에 둔다.
- * 이 주소로 보내면 봇이 그 채널에 글을 올린다. 보낼 곳이 주소 하나로 정해져 있어 이용자별로 저장하는 값은 없다.
- * 주소에 토큰이 들어 있으므로 주소를 로그·오류에 남기지 않는다.
+ * 착착 커스텀 봇 (착착 앱 API, Authorization: Bearer <봇 토큰>).
+ * 서버 주소와 봇 토큰은 서버 설정(CHAKCHAK_URL, CHAKCHAK_BOT_TOKEN)에만 있다.
+ * 착착에서 봇을 여러 채널에 초대해 두면 이용자는 그중 하나를 골라 연결하고, 우리는 채널 이름만 저장한다.
+ * 채널마다 따로 보내므로 한 채널이 끊겨도 다른 채널은 그대로 받는다.
  */
-export type ChakchakTarget = Record<string, never>;
+export interface ChakchakTarget {
+  channel: string;
+}
 
 export interface ChakchakPayload {
   text: string;
 }
 
-/** 착착이 올리는 글의 한도 */
+export interface ChakchakChannel {
+  name: string;
+  private: boolean;
+}
+
+export class ChakchakApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** 착착이 받는 글의 한도 */
 const MAX_TEXT = 8000;
 
 /**
@@ -25,6 +41,12 @@ const MAX_TEXT = 8000;
  */
 export function neutralizeMarkdown(text: string): string {
   return text.replace(/@\[/g, '@​[').replace(/\]\(/g, ']​(');
+}
+
+/** 실패하면 착착은 { success: false, code, data: 이유 } 로 답한다 (data 는 글자 또는 글자 목록). */
+function reasonOf(status: number, body: { data?: unknown }): string {
+  const reason = Array.isArray(body.data) ? body.data.join(', ') : typeof body.data === 'string' ? body.data : `HTTP ${status}`;
+  return truncateText(reason, 300);
 }
 
 @Injectable()
@@ -36,7 +58,38 @@ export class ChakchakProvider implements NotificationProvider<ChakchakTarget, Ch
   constructor(@Inject(APP_ENV) private readonly env: AppEnv) {}
 
   enabled(): boolean {
-    return Boolean(this.env.chakchakBotUrl);
+    return Boolean(this.env.chakchak);
+  }
+
+  private async call(path: string, body?: object): Promise<{ status: number; headers: Headers; data: Record<string, unknown> }> {
+    const config = this.env.chakchak;
+    if (!config) throw new ChakchakApiError(0, '착착 봇이 설정되지 않았습니다.');
+    const response = await this.fetchImpl(`${config.url}/api/apps/v1/${path}`, {
+      method: body ? 'POST' : 'GET',
+      headers: { Authorization: `Bearer ${config.botToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      redirect: 'error',
+      signal: AbortSignal.timeout(20_000),
+    });
+    const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    return { status: response.status, headers: response.headers, data };
+  }
+
+  /** 봇이 들어가 있어 글을 올릴 수 있는 채널 (보관된 채널 제외) */
+  async listChannels(): Promise<ChakchakChannel[]> {
+    let result: Awaited<ReturnType<ChakchakProvider['call']>>;
+    try {
+      result = await this.call('channels');
+    } catch (error) {
+      if (error instanceof ChakchakApiError) throw error;
+      throw new ChakchakApiError(0, '착착 서버에 연결하지 못했습니다.');
+    }
+    const { status, data } = result;
+    if (status === 401) throw new ChakchakApiError(401, '착착 봇 토큰이 올바르지 않습니다. 서버 설정(CHAKCHAK_BOT_TOKEN)을 확인해 주세요.');
+    if (status !== 200 || !Array.isArray(data)) throw new ChakchakApiError(status, reasonOf(status, data));
+    return (data as Array<{ name?: unknown; private?: unknown; archived?: unknown; isMember?: unknown }>)
+      .filter((row) => typeof row.name === 'string' && row.isMember === true && row.archived !== true)
+      .map((row) => ({ name: row.name as string, private: row.private === true }));
   }
 
   format(message: NotificationMessage): ChakchakPayload {
@@ -66,43 +119,34 @@ export class ChakchakProvider implements NotificationProvider<ChakchakTarget, Ch
     return { text: neutralizeMarkdown(truncateText(text, MAX_TEXT)) || '-' };
   }
 
-  async send(_target: ChakchakTarget, payload: ChakchakPayload): Promise<SendResult> {
-    void _target;
-    const url = this.env.chakchakBotUrl;
-    if (!url) return { status: 'PERMANENT', error: '착착 받는 주소가 설정되지 않았습니다.', statusCode: null, channelBroken: false };
-    let response: Response;
+  async send(target: ChakchakTarget, payload: ChakchakPayload): Promise<SendResult> {
+    if (typeof target?.channel !== 'string' || target.channel === '') {
+      return { status: 'PERMANENT', error: '채널 정보가 올바르지 않습니다.', statusCode: null, channelBroken: true };
+    }
+    let result: Awaited<ReturnType<ChakchakProvider['call']>>;
     try {
-      response = await this.fetchImpl(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        redirect: 'error',
-        signal: AbortSignal.timeout(20_000),
-      });
+      result = await this.call('chat.postMessage', { channel: target.channel, text: payload.text });
     } catch (error) {
-      // 예외 메시지에 주소(토큰 포함)가 섞이지 않도록 종류만 남긴다.
+      if (error instanceof ChakchakApiError) return { status: 'PERMANENT', error: error.message, statusCode: null, channelBroken: false };
+      // 예외 메시지에 요청 정보가 섞이지 않도록 종류만 남긴다.
       return { status: 'RETRY', error: `네트워크 오류: ${error instanceof Error ? error.name : 'unknown'}`, statusCode: null, retryAfterMs: null };
     }
-    // 실패하면 착착은 { success: false, code, data: 이유 } 로 답한다 (data 는 글자 또는 글자 목록).
-    const data = (await response.json().catch(() => ({}))) as { id?: unknown; data?: unknown };
-    if (response.ok) return { status: 'SENT', providerMessageId: typeof data.id === 'number' || typeof data.id === 'string' ? String(data.id) : null };
-    const detail = truncateText(Array.isArray(data.data) ? data.data.join(', ') : typeof data.data === 'string' ? data.data : `HTTP ${response.status}`, 300);
-    if (response.status === 429) {
-      const seconds = Number(response.headers.get('retry-after'));
-      return { status: 'RETRY', error: `요청 제한(429): ${detail}`, statusCode: 429, retryAfterMs: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null };
+    const { status, headers, data } = result;
+    if (status >= 200 && status < 300) {
+      const id = data.messageId;
+      return { status: 'SENT', providerMessageId: typeof id === 'number' || typeof id === 'string' ? String(id) : null };
     }
-    if (response.status >= 500) return { status: 'RETRY', error: detail, statusCode: response.status, retryAfterMs: null };
-    // 404: 착착에서 받는 주소를 지웠다. 새 주소를 넣기 전에는 보낼 수 없다.
-    if (response.status === 404) {
-      return {
-        status: 'PERMANENT',
-        error: '착착 봇의 받는 주소가 없어졌습니다. 착착에서 새 받는 주소를 만들어 서버 설정(CHAKCHAK_BOT_URL)을 바꾼 뒤 다시 연결해 주세요.',
-        statusCode: 404,
-        channelBroken: true,
-      };
+    const reason = reasonOf(status, data);
+    if (status === 429) {
+      const seconds = Number(headers.get('retry-after'));
+      return { status: 'RETRY', error: `요청 제한(429): ${reason}`, statusCode: 429, retryAfterMs: Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null };
     }
-    // 403: 받는 주소를 꺼 두었거나 봇이 채널에서 빠졌다. 착착에서 고친 뒤 다시 연결한다.
-    if (response.status === 403) return { status: 'PERMANENT', error: `착착: ${detail} 고친 뒤 다시 연결해 주세요.`, statusCode: 403, channelBroken: true };
-    return { status: 'PERMANENT', error: detail, statusCode: response.status, channelBroken: false };
+    if (status >= 500) return { status: 'RETRY', error: reason, statusCode: status, retryAfterMs: null };
+    if (status === 401) {
+      return { status: 'PERMANENT', error: '착착 봇 토큰이 올바르지 않습니다. 서버 설정(CHAKCHAK_BOT_TOKEN)을 고친 뒤 다시 연결해 주세요.', statusCode: 401, channelBroken: true };
+    }
+    // 403: 봇이 채널에서 빠졌거나 채널이 보관됨. 404: 채널이 지워졌거나 이름이 바뀜. 착착에서 고친 뒤 다시 연결한다.
+    if (status === 403 || status === 404) return { status: 'PERMANENT', error: `착착: ${reason} 고친 뒤 다시 연결해 주세요.`, statusCode: status, channelBroken: true };
+    return { status: 'PERMANENT', error: reason, statusCode: status, channelBroken: false };
   }
 }

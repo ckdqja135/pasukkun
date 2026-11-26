@@ -200,21 +200,39 @@ describe('DiscordProvider (서비스 봇)', () => {
   });
 });
 
-describe('ChakchakProvider (착착 봇 채널)', () => {
-  const url = `http://localhost:3095/api/hooks/bot/${'c0ffee'.repeat(8)}`;
-  const provider = new ChakchakProvider({ chakchakBotUrl: url } as AppEnv);
-  const calls: Array<{ url: string; body: Record<string, unknown>; redirect?: RequestRedirect }> = [];
+describe('ChakchakProvider (착착 커스텀 봇)', () => {
+  const token = `shb-${'c0ffee'.repeat(8)}`;
+  const provider = new ChakchakProvider({ chakchak: { url: 'http://localhost:3095', botToken: token } } as AppEnv);
+  const calls: Array<{ url: string; method?: string; body: Record<string, unknown>; headers: Record<string, string>; redirect?: RequestRedirect }> = [];
   const reply = (response: Response | (() => Response)) => {
     provider.fetchImpl = async (target, init) => {
-      calls.push({ url: target, body: JSON.parse(String(init.body ?? '{}')), redirect: init.redirect });
+      calls.push({ url: target, method: init.method, body: JSON.parse(String(init.body ?? '{}')), headers: init.headers as Record<string, string>, redirect: init.redirect });
       return typeof response === 'function' ? response() : response;
     };
   };
   beforeEach(() => void (calls.length = 0));
 
-  it('받는 주소가 설정되어 있을 때만 켜진다', () => {
+  it('서버 주소와 봇 토큰이 설정되어 있을 때만 켜진다', () => {
     expect(provider.enabled()).toBe(true);
-    expect(new ChakchakProvider({} as AppEnv).enabled()).toBe(false);
+    expect(new ChakchakProvider({ chakchak: null } as AppEnv).enabled()).toBe(false);
+  });
+
+  it('봇이 들어가 있고 보관되지 않은 채널만 고를 수 있게 돌려준다', async () => {
+    reply(
+      json([
+        { name: 'web-보안', private: false, archived: false, isMember: true },
+        { name: '일반', private: false, archived: false, isMember: false },
+        { name: '옛-보안', private: false, archived: true, isMember: true },
+        { name: 'api-보안', private: true, archived: false, isMember: true },
+      ]),
+    );
+    expect(await provider.listChannels()).toEqual([
+      { name: 'web-보안', private: false },
+      { name: 'api-보안', private: true },
+    ]);
+    expect(calls[0]).toMatchObject({ url: 'http://localhost:3095/api/apps/v1/channels', method: 'GET', headers: { Authorization: `Bearer ${token}` }, redirect: 'error' });
+    reply(json({ success: false, code: 401, data: '앱 토큰이 올바르지 않습니다.' }, 401));
+    await expect(provider.listChannels()).rejects.toThrow('CHAKCHAK_BOT_TOKEN');
   });
 
   it('외부 문구가 멘션·숨은 링크·굵게 문법으로 동작하지 않는다', () => {
@@ -235,26 +253,29 @@ describe('ChakchakProvider (착착 봇 채널)', () => {
     expect(provider.formatText('y'.repeat(20000), 'info').text.length).toBeLessThanOrEqual(8000);
   });
 
-  it('설정된 주소로 보내고 결과를 나눈다 (주소는 오류에 남기지 않는다)', async () => {
-    reply(json({ ok: true, id: 7 }));
-    expect(await provider.send({}, { text: 'a' })).toEqual({ status: 'SENT', providerMessageId: '7' });
-    expect(calls[0]).toMatchObject({ url, body: { text: 'a' }, redirect: 'error' });
+  it('고른 채널로 보내고 결과를 나눈다 (토큰은 오류에 남기지 않는다)', async () => {
+    reply(json({ ok: true, messageId: 7, channel: 'web-보안' }, 201));
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toEqual({ status: 'SENT', providerMessageId: '7' });
+    expect(calls[0]).toMatchObject({ url: 'http://localhost:3095/api/apps/v1/chat.postMessage', method: 'POST', body: { channel: 'web-보안', text: 'a' } });
 
     reply(json({ success: false, code: 429, data: 'ThrottlerException: Too Many Requests' }, 429, { 'Retry-After': '30' }));
-    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'RETRY', retryAfterMs: 30_000 });
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toMatchObject({ status: 'RETRY', retryAfterMs: 30_000 });
     reply(json({}, 502));
-    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'RETRY' });
-    reply(json({ success: false, code: 404, data: '존재하지 않는 받는 주소입니다.' }, 404));
-    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true });
-    reply(json({ success: false, code: 403, data: '꺼 둔 받는 주소입니다.' }, 403));
-    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true, error: '착착: 꺼 둔 받는 주소입니다. 고친 뒤 다시 연결해 주세요.' });
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toMatchObject({ status: 'RETRY' });
+    reply(json({ success: false, code: 404, data: '존재하지 않는 채널입니다.' }, 404));
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true, error: '착착: 존재하지 않는 채널입니다. 고친 뒤 다시 연결해 주세요.' });
+    reply(json({ success: false, code: 403, data: '보관된 채널에는 쓸 수 없습니다.' }, 403));
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true });
+    reply(json({ success: false, code: 401, data: '앱 토큰이 올바르지 않습니다.' }, 401));
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true });
     reply(json({ success: false, code: 400, data: ['text must be shorter'] }, 400));
-    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: false, error: 'text must be shorter' });
+    expect(await provider.send({ channel: 'web-보안' }, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: false, error: 'text must be shorter' });
+    expect(await provider.send({} as never, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true });
 
     provider.fetchImpl = async () => {
-      throw new TypeError(`fetch failed ${url}`);
+      throw new TypeError(`fetch failed ${token}`);
     };
-    const failed = await provider.send({}, { text: 'a' });
+    const failed = await provider.send({ channel: 'web-보안' }, { text: 'a' });
     expect(failed).toMatchObject({ status: 'RETRY' });
     expect(JSON.stringify(failed)).not.toContain('c0ffeec0ffee');
   });

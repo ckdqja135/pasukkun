@@ -14,7 +14,8 @@ import { createGithubAppMock, type GithubAppMock } from './github-mock.js';
  * - 외부 API 는 호출하지 않는다. OSV·Telegram·Discord 는 테스트가 응답을 주입한다.
  */
 const ORIGIN = 'http://localhost:5273';
-export const CHAKCHAK_BOT_URL = `http://localhost:3095/api/hooks/bot/${'c0ffee'.repeat(8)}`;
+export const CHAKCHAK_URL = 'http://localhost:3095';
+export const CHAKCHAK_BOT_TOKEN = `shb-${'c0ffee'.repeat(8)}`;
 
 export interface TestClient {
   login: string;
@@ -43,8 +44,10 @@ export interface BotMock {
   telegramReply: (body: Record<string, unknown>) => Response;
   /** 디스코드 메시지 전송 응답 */
   discordReply: (channelId: string) => Response;
-  /** 착착 봇 받는 주소 응답 */
-  chakchakReply: () => Response;
+  /** 착착 봇 메시지 보내기 응답 */
+  chakchakReply: (channel: string) => Response;
+  /** 착착 봇 API 의 채널 목록 응답 */
+  chakchakChannels: Array<{ name: string; private: boolean; archived: boolean; isMember: boolean }>;
   /** 디스코드 서버별 채널 (guildId → 채널 목록) */
   discordGuilds: Map<string, Array<{ id: string; name: string; type: number }>>;
   reset(): void;
@@ -87,7 +90,8 @@ export async function createTestContext(): Promise<TestContext> {
     DISCORD_BOT_TOKEN: 'fixture-discord-bot-token',
     DISCORD_CLIENT_ID: '111111111111111111',
     DISCORD_CLIENT_SECRET: 'fixture-discord-client-secret',
-    CHAKCHAK_BOT_URL: CHAKCHAK_BOT_URL,
+    CHAKCHAK_URL,
+    CHAKCHAK_BOT_TOKEN,
     APP_ORIGIN: ORIGIN,
     DISABLE_INGESTION: '1',
     COOKIE_SECURE: 'false',
@@ -164,7 +168,13 @@ export async function createTestContext(): Promise<TestContext> {
   const { ChannelService } = await import('../src/notification/channel.service.js');
   const okTelegram = () => jsonResponse({ ok: true, result: { message_id: 1 } });
   const okDiscord = () => jsonResponse({ id: '1' });
-  const okChakchak = () => jsonResponse({ ok: true, id: 1 });
+  const okChakchak = (channel: string) => jsonResponse({ ok: true, messageId: 1, channel }, { status: 201 });
+  const chakchakChannels = () => [
+    { name: 'web-보안', private: false, archived: false, isMember: true },
+    { name: 'api-보안', private: true, archived: false, isMember: true },
+    { name: '일반', private: false, archived: false, isMember: false },
+    { name: '옛-보안', private: false, archived: true, isMember: true },
+  ];
   const bots: BotMock = {
     telegramSent: [],
     discordSent: [],
@@ -172,6 +182,7 @@ export async function createTestContext(): Promise<TestContext> {
     telegramReply: okTelegram,
     discordReply: okDiscord,
     chakchakReply: okChakchak,
+    chakchakChannels: chakchakChannels(),
     discordGuilds: new Map([['222222222222222222', [{ id: '333333333333333333', name: 'alerts', type: 0 }, { id: '333333333333333334', name: 'voice', type: 2 }]]]),
     reset() {
       bots.telegramSent.length = 0;
@@ -180,6 +191,7 @@ export async function createTestContext(): Promise<TestContext> {
       bots.telegramReply = okTelegram;
       bots.discordReply = okDiscord;
       bots.chakchakReply = okChakchak;
+      bots.chakchakChannels = chakchakChannels();
     },
   };
   app.get(TelegramProvider).fetchImpl = async (url, init) => {
@@ -194,8 +206,16 @@ export async function createTestContext(): Promise<TestContext> {
     return jsonResponse({ ok: false, description: 'Not Found' }, { status: 404 });
   };
   app.get(ChakchakProvider).fetchImpl = async (url, init) => {
-    bots.chakchakSent.push({ url, body: JSON.parse(String(init.body ?? '{}')) as Record<string, unknown>, headers: {} });
-    return bots.chakchakReply();
+    const headers = (init.headers ?? {}) as Record<string, string>;
+    if (headers.Authorization !== `Bearer ${CHAKCHAK_BOT_TOKEN}`) return jsonResponse({ success: false, code: 401, data: '앱 토큰이 올바르지 않습니다.' }, { status: 401 });
+    const path = url.replace(CHAKCHAK_URL, '');
+    if (path === '/api/apps/v1/channels') return jsonResponse(bots.chakchakChannels);
+    if (path === '/api/apps/v1/chat.postMessage') {
+      const body = JSON.parse(String(init.body ?? '{}')) as Record<string, unknown>;
+      bots.chakchakSent.push({ url, body, headers });
+      return bots.chakchakReply(String(body.channel));
+    }
+    return jsonResponse({ success: false, code: 404, data: 'Not Found' }, { status: 404 });
   };
   app.get(DiscordProvider).fetchImpl = async (url, init) => {
     const headers = (init.headers ?? {}) as Record<string, string>;

@@ -7,6 +7,7 @@ import { PrismaService } from '../db/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { NotificationMessage } from './message.js';
 import type {
+  ChakchakChannelOptionDto,
   ChannelDto,
   ChannelLinkStatusDto,
   ChannelProvidersDto,
@@ -15,7 +16,7 @@ import type {
   DiscordLinkDto,
   TelegramLinkDto,
 } from './notification.dto.js';
-import { ChakchakProvider } from './providers/chakchak.provider.js';
+import { ChakchakApiError, ChakchakProvider } from './providers/chakchak.provider.js';
 import { DiscordProvider } from './providers/discord.provider.js';
 import type { NotificationProvider, SendResult } from './providers/provider.js';
 import { TelegramProvider, type TelegramChat, type TelegramUpdate } from './providers/telegram.provider.js';
@@ -376,13 +377,33 @@ export class ChannelService {
 
   // - 착착 -
 
-  /** 착착 봇이 초대된 채널에 확인 메시지를 올리고 채널을 만든다. 보낼 곳은 서버 설정의 주소 하나라 계정마다 한 채널이다. */
-  async connectChakchak(userId: string, name: string): Promise<ChannelDto> {
-    if (!this.chakchak.enabled()) throw new BadRequestException('이 서버에는 착착 봇의 받는 주소가 설정되어 있지 않습니다.');
-    if (!(await this.prisma.notificationChannel.findFirst({ where: { userId, type: 'CHAKCHAK' }, select: { id: true } }))) await this.assertChannelRoom(userId);
-    const result = await this.send({ type: 'CHAKCHAK', target: {} }, this.testMessage(name.trim()), null);
-    if (result.status !== 'SENT') throw new BadRequestException(`착착으로 메시지를 보내지 못했습니다: ${result.error}`);
-    const channel = await this.upsertChannel(userId, 'CHAKCHAK', () => true, { name: name.trim(), label: '착착 · 봇이 초대된 채널', target: {} });
+  /** 착착 봇이 들어가 있는 채널 목록 (연결할 채널 고르기) */
+  async listChakchakChannels(): Promise<ChakchakChannelOptionDto[]> {
+    if (!this.chakchak.enabled()) throw new BadRequestException('이 서버에는 착착 봇이 설정되어 있지 않습니다.');
+    try {
+      return await this.chakchak.listChannels();
+    } catch (error) {
+      throw new BadRequestException(error instanceof ChakchakApiError ? error.message : '착착에서 채널 목록을 가져오지 못했습니다.');
+    }
+  }
+
+  /** 고른 채널에 확인 메시지를 올리고 연결한다. 봇이 들어가 있는 채널만 고를 수 있고, 채널마다 따로 연결한다. */
+  async connectChakchak(userId: string, name: string, channelName: string): Promise<ChannelDto> {
+    const available = await this.listChakchakChannels();
+    if (!available.some((option) => option.name === channelName)) {
+      throw new BadRequestException('봇이 들어가 있는 채널이 아닙니다. 착착에서 봇을 그 채널에 초대한 뒤 다시 시도해 주세요.');
+    }
+    const existing = (await this.prisma.notificationChannel.findMany({ where: { userId, type: 'CHAKCHAK' } })).some(
+      (row) => (row.target as { channel?: unknown } | null)?.channel === channelName,
+    );
+    if (!existing) await this.assertChannelRoom(userId);
+    const result = await this.send({ type: 'CHAKCHAK', target: { channel: channelName } }, this.testMessage(name.trim()), null);
+    if (result.status !== 'SENT') throw new BadRequestException(`채널에 메시지를 보내지 못했습니다: ${result.error}`);
+    const channel = await this.upsertChannel(userId, 'CHAKCHAK', (target) => target.channel === channelName, {
+      name: name.trim(),
+      label: `착착 · #${channelName}`.slice(0, 120),
+      target: { channel: channelName },
+    });
     return toChannelDto(await this.prisma.notificationChannel.update({ where: { id: channel.id }, data: { lastSuccessAt: new Date() } }));
   }
 

@@ -672,7 +672,7 @@ model FindingStatusHistory {
 enum ChannelType {
   TELEGRAM
   DISCORD
-  /// 착착 커스텀 봇이 초대된 채널 (받는 주소는 서버 설정에만 있다)
+  /// 착착 커스텀 봇 (봇 토큰은 서버 설정에만 있다)
   CHAKCHAK
 }
 
@@ -689,7 +689,7 @@ model NotificationChannel {
   userId        String
   type          ChannelType
   name          String
-  /// 보낼 곳. 텔레그램: { chatId, chatType, title } / 디스코드: { guildId, guildName, channelId, channelName } / 착착: {}
+  /// 보낼 곳. 텔레그램: { chatId, chatType, title } / 디스코드: { guildId, guildName, channelId, channelName } / 착착: { channel }
   target        Json
   /// 화면 표시용 설명 (예: "디스코드 · 내서버 #alerts")
   label         String        @default("")

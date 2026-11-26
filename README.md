@@ -276,11 +276,13 @@ Notifications are sent by the service's own bots. You connect with buttons; ther
 3. Back in pasukkun, choose the channel and click **이 채널로 연결** (Connect this channel). A confirmation message is posted there. If the channel list is empty, give the bot permission to view and post in the channel in your Discord server settings.
 
 **착착 (Chakchak)**
-1. Once, in 착착: open **커스텀 봇** (Custom bots) from the workspace menu, create a bot (for example, pasukkun), invite it to the channel where you want alerts, and add an **알림 받기** (Receive alerts) job for that channel. Give the bot's receive address to the pasukkun operator for the server settings. Anyone who has the address can post to that channel as the bot, so keep it private.
-2. In pasukkun, click **착착 연결** (Connect 착착), name the channel, and click **확인 메시지 보내고 연결** (Send confirmation and connect). The bot posts a confirmation message in the channel.
-3. Notifications are posted by the bot in that channel. The server holds one address, so everyone who connects 착착 on this server receives in the same channel.
-4. For morning and afternoon briefings, create a rule with **매일** (Daily) at two times, such as 09:00 and 14:00, set **모아 받는 형식** (Digest format) to **보안 브리핑** (Security briefing), and choose this channel.
-5. If the receive address is deleted or turned off, or the bot leaves the channel, the channel turns **연결 끊김** (Disconnected). Fix it in 착착 (a deleted address needs a new one in the server settings), then click **다시 연결** (Reconnect).
+
+It works like Discord: one bot, invited to as many channels as you like, and you pick a channel when connecting.
+1. Once, in 착착: open **커스텀 봇** (Custom bots) from the workspace menu, and create a bot (for example, pasukkun). Its token is shown only once, right after creation; if you lose it, use **토큰 다시 만들기** (Regenerate token). Give the token and the 착착 server address to the pasukkun operator for the server settings. Anyone who has the token can post as the bot, so keep it private.
+2. In 착착, invite the bot to each channel that should receive alerts, for example #web-보안 and #api-보안.
+3. In pasukkun, click **착착 연결** (Connect 착착), choose a channel, and click **이 채널로 연결** (Connect this channel). The bot posts a confirmation message there. Repeat for each channel.
+4. To send each project to its own channel, create one **프로젝트 영향 알림** (Project impact) rule per project and choose that project's channel. For morning and afternoon briefings, set **매일** (Daily) at two times, such as 09:00 and 14:00, and set **모아 받는 형식** (Digest format) to **보안 브리핑** (Security briefing).
+5. Each channel is sent to separately. If one channel is deleted, renamed, or archived, or the bot leaves it, only that channel turns **연결 끊김** (Disconnected) and the others keep receiving. Fix it in 착착, then click **다시 연결** (Reconnect) and choose the channel again.
 
 **On a connected channel**
 - **테스트 발송** (Send test): sends one confirmation message, also recorded in delivery history.

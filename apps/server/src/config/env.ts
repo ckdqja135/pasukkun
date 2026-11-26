@@ -34,8 +34,9 @@ const schema = z.object({
   DISCORD_BOT_TOKEN: optional,
   DISCORD_CLIENT_ID: optional,
   DISCORD_CLIENT_SECRET: optional,
-  /** 착착 커스텀 봇의 받는 주소. 이 주소로 보내면 그 봇이 초대된 채널에 글을 올린다. */
-  CHAKCHAK_BOT_URL: optional,
+  /** 착착 서버 주소와 커스텀 봇 토큰. 봇을 채널에 초대해 두면 이용자가 그 채널을 골라 알림을 연결한다. */
+  CHAKCHAK_URL: optional,
+  CHAKCHAK_BOT_TOKEN: optional,
   COOKIE_SECURE: optional,
   SESSION_TTL_DAYS: int(14, 1),
   /** GitHub OAuth App 의 Client ID / Secret. 로그인·가입은 GitHub 계정으로만 한다. */
@@ -89,7 +90,7 @@ export interface AppEnv {
   databasePath: string;
   telegramBotToken?: string;
   discord: { botToken: string; clientId: string; clientSecret: string } | null;
-  chakchakBotUrl?: string;
+  chakchak: { url: string; botToken: string } | null;
   cookieSecure: boolean;
   sessionTtlDays: number;
   githubOAuth: { clientId: string; clientSecret: string } | null;
@@ -140,7 +141,7 @@ export function loadEnv(): AppEnv {
       parsed.DISCORD_BOT_TOKEN && parsed.DISCORD_CLIENT_ID && parsed.DISCORD_CLIENT_SECRET
         ? { botToken: parsed.DISCORD_BOT_TOKEN, clientId: parsed.DISCORD_CLIENT_ID, clientSecret: parsed.DISCORD_CLIENT_SECRET }
         : null,
-    chakchakBotUrl: loadChakchakBotUrl(parsed.CHAKCHAK_BOT_URL),
+    chakchak: loadChakchak(parsed.CHAKCHAK_URL, parsed.CHAKCHAK_BOT_TOKEN),
     // NODE_ENV 설정을 잊어도 HTTPS 주소라면 Secure 쿠키를 쓴다.
     cookieSecure: flag(parsed.COOKIE_SECURE, production || parsed.APP_ORIGIN.startsWith('https://')),
     sessionTtlDays: parsed.SESSION_TTL_DAYS,
@@ -179,14 +180,15 @@ export function loadEnv(): AppEnv {
   return cached;
 }
 
-/** 착착에서 복사한 받는 주소만 받는다. 주소에 토큰이 들어 있으므로 오류에 값을 넣지 않는다. */
-function loadChakchakBotUrl(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  const url = URL.canParse(value) ? new URL(value) : null;
-  if (!url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || !/^\/api\/hooks\/bot\/[0-9a-f]{48}$/.test(url.pathname)) {
-    throw new Error('CHAKCHAK_BOT_URL 형식이 올바르지 않습니다. 착착 커스텀 봇의 [알림 받기]에서 복사한 받는 주소를 그대로 넣어 주세요.');
+/** 착착 서버 주소는 주소 부분만, 봇 토큰은 착착이 발급한 형식만 받는다. 토큰은 오류에 넣지 않는다. */
+function loadChakchak(address: string | undefined, botToken: string | undefined): AppEnv['chakchak'] {
+  if (!address || !botToken) return null;
+  const url = URL.canParse(address) ? new URL(address) : null;
+  if (!url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+    throw new Error('CHAKCHAK_URL 형식이 올바르지 않습니다. 착착 서버 주소만 넣어 주세요 (예: http://192.168.0.5:3095).');
   }
-  return url.toString();
+  if (!/^shb-[0-9a-f]{48}$/.test(botToken)) throw new Error('CHAKCHAK_BOT_TOKEN 형식이 올바르지 않습니다. 착착 커스텀 봇에서 발급한 토큰을 그대로 넣어 주세요.');
+  return { url: url.origin, botToken };
 }
 
 function loadGithubApp(parsed: z.infer<typeof schema>): AppEnv['githubApp'] {

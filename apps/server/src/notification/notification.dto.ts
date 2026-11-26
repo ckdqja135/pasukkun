@@ -87,7 +87,7 @@ export class ChannelProvidersDto {
   telegramBotUsername: string | null;
   /** 서비스 디스코드 봇이 설정되어 있는지 */
   discord: boolean;
-  /** 착착 커스텀 봇의 받는 주소가 설정되어 있는지 */
+  /** 착착 커스텀 봇이 설정되어 있는지 */
   chakchak: boolean;
 }
 
@@ -119,6 +119,27 @@ export class ChannelLinkStatusDto {
 export class DiscordChannelOptionDto {
   id: string;
   name: string;
+}
+
+export class ChakchakChannelOptionDto {
+  /** 착착 채널 이름 */
+  name: string;
+  /** 비공개 채널인지 */
+  private: boolean;
+}
+
+export class ConnectChakchakDto {
+  /** 화면에 보일 이름 (예: web 보안) */
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  name: string;
+
+  /** 알림을 받을 착착 채널 이름 (봇이 들어가 있는 채널) */
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  channel: string;
 }
 
 export class CompleteDiscordLinkDto {
