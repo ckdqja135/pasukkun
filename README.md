@@ -1,6 +1,6 @@
 # pasukkun user guide
 
-pasukkun collects newly published security vulnerabilities, checks whether the **package versions your projects actually install** are affected, and notifies you on Telegram or Discord.
+pasukkun collects newly published security vulnerabilities, checks whether the **package versions your projects actually install** are affected, and notifies you on Telegram, Discord, or 착착 (Chakchak).
 
 This guide explains how to use each menu. The app's screens are in Korean, so on-screen labels are written as they appear, followed by an English description.
 
@@ -19,7 +19,7 @@ This guide explains how to use each menu. The app's screens are in Korean, so on
 
 1. In **관심 기술** (Technologies of interest), pick the languages and frameworks you use.
 2. In **프로젝트** (Projects), click **GitHub 저장소 가져오기** (Import GitHub repositories) and pick your repositories. You can also register a project by hand and upload a lockfile.
-3. In **알림 설정** (Notification settings), connect Telegram or Discord and create a subscription rule.
+3. In **알림 설정** (Notification settings), connect Telegram, Discord, or 착착 and create a subscription rule.
 
 ## Left menu
 
@@ -274,6 +274,13 @@ Notifications are sent by the service's own bots. You connect with buttons; ther
 1. Click **디스코드 연결** (Connect Discord), name the channel, and click **디스코드로 이동** (Go to Discord).
 2. On Discord, choose the server to add the bot to and approve. Only servers you can manage are listed.
 3. Back in pasukkun, choose the channel and click **이 채널로 연결** (Connect this channel). A confirmation message is posted there. If the channel list is empty, give the bot permission to view and post in the channel in your Discord server settings.
+
+**착착 (Chakchak)**
+1. Once, in 착착: open **커스텀 봇** (Custom bots) from the workspace menu, create a bot (for example, pasukkun), invite it to the channel where you want alerts, and add an **알림 받기** (Receive alerts) job for that channel. Give the bot's receive address to the pasukkun operator for the server settings. Anyone who has the address can post to that channel as the bot, so keep it private.
+2. In pasukkun, click **착착 연결** (Connect 착착), name the channel, and click **확인 메시지 보내고 연결** (Send confirmation and connect). The bot posts a confirmation message in the channel.
+3. Notifications are posted by the bot in that channel. The server holds one address, so everyone who connects 착착 on this server receives in the same channel.
+4. For morning and afternoon briefings, create a rule with **매일** (Daily) at two times, such as 09:00 and 14:00, set **모아 받는 형식** (Digest format) to **보안 브리핑** (Security briefing), and choose this channel.
+5. If the receive address is deleted or turned off, or the bot leaves the channel, the channel turns **연결 끊김** (Disconnected). Fix it in 착착 (a deleted address needs a new one in the server settings), then click **다시 연결** (Reconnect).
 
 **On a connected channel**
 - **테스트 발송** (Send test): sends one confirmation message, also recorded in delivery history.

@@ -15,7 +15,7 @@ export type Tone = NotificationMessage['tone'];
  * 형식 변환(길이 제한, 이스케이프, 멘션 방지)과 전송·오류 분류를 분리한다.
  */
 export interface NotificationProvider<Target = unknown, Payload = unknown> {
-  readonly type: 'TELEGRAM' | 'DISCORD';
+  readonly type: 'TELEGRAM' | 'DISCORD' | 'CHAKCHAK';
   /** 서버에 봇이 설정되어 있는지 */
   enabled(): boolean;
   /** 기본 형식 */

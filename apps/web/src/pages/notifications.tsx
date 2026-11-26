@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, CircleDashed, Pause, Pencil, Play, Plus, Send, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bot, CheckCircle2, CircleDashed, Pause, Pencil, Play, Plus, Send, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
@@ -86,7 +86,7 @@ function ChannelsTab() {
   const channels = useChannels();
   const providers = useProviders();
   const [params, setParams] = useSearchParams();
-  const [connecting, setConnecting] = useState<'TELEGRAM' | 'DISCORD' | null>(null);
+  const [connecting, setConnecting] = useState<Channel['type'] | null>(null);
   const [renaming, setRenaming] = useState<Channel | null>(null);
   const discordLink = params.get('discord_link');
   const invalidate = () => {
@@ -146,16 +146,19 @@ function ChannelsTab() {
           <Button onClick={() => setConnecting('DISCORD')} disabled={!available.discord} variant="outline">
             <Plus aria-hidden /> 디스코드 연결
           </Button>
-          {!available.telegram || !available.discord ? (
+          <Button onClick={() => setConnecting('CHAKCHAK')} disabled={!available.chakchak} variant="outline">
+            <Bot aria-hidden /> 착착 연결
+          </Button>
+          {!available.telegram || !available.discord || !available.chakchak ? (
             <p className="w-full text-xs text-muted-foreground">
-              {[!available.telegram ? '텔레그램' : null, !available.discord ? '디스코드' : null].filter(Boolean).join(', ')} 봇이 이 서버에 아직 설정되지 않았습니다. 서버 운영자가 설정하면 사용할 수 있습니다.
+              {[!available.telegram ? '텔레그램' : null, !available.discord ? '디스코드' : null, !available.chakchak ? '착착' : null].filter(Boolean).join(', ')} 봇이 이 서버에 아직 설정되지 않았습니다. 서버 운영자가 설정하면 사용할 수 있습니다.
             </p>
           ) : null}
         </CardContent>
       </Card>
 
       {channels.data.length === 0 ? (
-        <EmptyState title="연결된 채널이 없습니다" description="텔레그램이나 디스코드를 연결하면 구독 규칙에 맞는 알림을 받을 수 있습니다." />
+        <EmptyState title="연결된 채널이 없습니다" description="텔레그램, 디스코드, 착착 중 하나를 연결하면 구독 규칙에 맞는 알림을 받을 수 있습니다." />
       ) : (
         <ul className="grid gap-3 lg:grid-cols-2">
           {channels.data.map((channel) => (
@@ -203,11 +206,12 @@ function ChannelsTab() {
         </ul>
       )}
       <UnsupportedNote title="지원 채널">
-        현재 텔레그램과 디스코드를 지원합니다. Slack, 이메일, 사용자 정의 Webhook 은 아직 지원하지 않습니다.
+        현재 텔레그램, 디스코드, 착착을 지원합니다. Slack, 이메일, 사용자 정의 Webhook 은 아직 지원하지 않습니다.
       </UnsupportedNote>
 
       {connecting === 'TELEGRAM' ? <TelegramConnectDialog botUsername={available.telegramBotUsername} onClose={() => setConnecting(null)} onConnected={invalidate} /> : null}
       {connecting === 'DISCORD' ? <DiscordConnectDialog onClose={() => setConnecting(null)} /> : null}
+      {connecting === 'CHAKCHAK' ? <ChakchakConnectDialog onClose={() => setConnecting(null)} onConnected={invalidate} /> : null}
       {discordLink ? (
         <DiscordChannelDialog
           requestId={discordLink}
@@ -309,6 +313,30 @@ function TelegramConnectDialog({ botUsername, onClose, onConnected }: { botUsern
             </p>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** 착착: 서버 설정의 착착 봇 받는 주소로 확인 메시지를 보내면 연결된다. */
+function ChakchakConnectDialog({ onClose, onConnected }: { onClose: () => void; onConnected: () => void }) {
+  const connect = useMutation({
+    mutationFn: (name: string) => unwrap(api.POST('/api/v1/channels/chakchak', { body: { name } })),
+    onSuccess: () => {
+      onConnected();
+      toast.success('착착이 연결되었습니다. 봇이 채널에 확인 메시지를 올렸습니다.');
+      onClose();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>착착 연결</DialogTitle>
+          <DialogDescription>착착에서 이 서버용으로 만든 봇이, 초대된 채널에 알림을 올립니다. 연결하면 그 채널에 확인 메시지를 한 건 올립니다.</DialogDescription>
+        </DialogHeader>
+        <NameStep defaultName="착착" submitLabel="확인 메시지 보내고 연결" pending={connect.isPending} onSubmit={(name) => connect.mutate(name)} />
       </DialogContent>
     </Dialog>
   );

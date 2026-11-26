@@ -60,7 +60,7 @@ export class UpdateChannelDto {
 
 export class ChannelDto {
   id: string;
-  type: 'TELEGRAM' | 'DISCORD';
+  type: 'TELEGRAM' | 'DISCORD' | 'CHAKCHAK';
   name: string;
   /** 보낼 곳 설명 (예: "디스코드 · 내서버 #alerts"). 비밀값은 저장하지 않는다. */
   label: string;
@@ -87,6 +87,8 @@ export class ChannelProvidersDto {
   telegramBotUsername: string | null;
   /** 서비스 디스코드 봇이 설정되어 있는지 */
   discord: boolean;
+  /** 착착 커스텀 봇의 받는 주소가 설정되어 있는지 */
+  chakchak: boolean;
 }
 
 export class TelegramLinkDto {

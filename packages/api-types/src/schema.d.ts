@@ -447,6 +447,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/channels/chakchak": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 착착 연결: 서버 설정의 착착 봇 받는 주소로 확인 메시지를 보내고 채널을 만든다. */
+        post: operations["NotificationController_connectChakchak"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/channels/links/{id}": {
         parameters: {
             query?: never;
@@ -1460,11 +1477,13 @@ export interface components {
             telegramBotUsername: string | null;
             /** @description 서비스 디스코드 봇이 설정되어 있는지 */
             discord: boolean;
+            /** @description 착착 커스텀 봇의 받는 주소가 설정되어 있는지 */
+            chakchak: boolean;
         };
         ChannelDto: {
             id: string;
             /** @enum {string} */
-            type: "TELEGRAM" | "DISCORD";
+            type: "TELEGRAM" | "DISCORD" | "CHAKCHAK";
             name: string;
             /** @description 보낼 곳 설명 (예: "디스코드 · 내서버 #alerts"). 비밀값은 저장하지 않는다. */
             label: string;
@@ -1670,7 +1689,7 @@ export interface components {
         BriefingChannelDto: {
             name: string;
             /** @enum {string} */
-            type: "TELEGRAM" | "DISCORD";
+            type: "TELEGRAM" | "DISCORD" | "CHAKCHAK";
             /** @description 이 채널로 보낸 결과 (발송 상태) */
             status: string;
         };
@@ -2774,6 +2793,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiscordLinkDto"];
+                };
+            };
+        };
+    };
+    NotificationController_connectChakchak: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelLinkInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelDto"];
                 };
             };
         };

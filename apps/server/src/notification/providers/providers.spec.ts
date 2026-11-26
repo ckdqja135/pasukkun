@@ -1,5 +1,6 @@
 import type { AppEnv } from '../../config/env.js';
 import type { NotificationMessage } from '../message.js';
+import { ChakchakProvider } from './chakchak.provider.js';
 import { BOT_PERMISSIONS, DiscordProvider, neutralizeMentions } from './discord.provider.js';
 import { escapeHtml, TelegramProvider } from './telegram.provider.js';
 
@@ -196,5 +197,65 @@ describe('DiscordProvider (서비스 봇)', () => {
     calls.length = 0;
     expect(await provider.send({ channelId: '../../users/@me' }, payload)).toMatchObject({ status: 'PERMANENT' });
     expect(calls).toEqual([]);
+  });
+});
+
+describe('ChakchakProvider (착착 봇 채널)', () => {
+  const url = `http://localhost:3095/api/hooks/bot/${'c0ffee'.repeat(8)}`;
+  const provider = new ChakchakProvider({ chakchakBotUrl: url } as AppEnv);
+  const calls: Array<{ url: string; body: Record<string, unknown>; redirect?: RequestRedirect }> = [];
+  const reply = (response: Response | (() => Response)) => {
+    provider.fetchImpl = async (target, init) => {
+      calls.push({ url: target, body: JSON.parse(String(init.body ?? '{}')), redirect: init.redirect });
+      return typeof response === 'function' ? response() : response;
+    };
+  };
+  beforeEach(() => void (calls.length = 0));
+
+  it('받는 주소가 설정되어 있을 때만 켜진다', () => {
+    expect(provider.enabled()).toBe(true);
+    expect(new ChakchakProvider({} as AppEnv).enabled()).toBe(false);
+  });
+
+  it('외부 문구가 멘션·숨은 링크·굵게 문법으로 동작하지 않는다', () => {
+    const { text } = provider.format(
+      message({ title: '@[모두](channel) [여기](https://evil.example) **x**', fields: [{ label: '설명', value: '@[홍길동](12) 안내' }] }),
+    );
+    expect(text).not.toMatch(/@\[/);
+    expect(text).not.toContain('](https://evil');
+    expect(text).not.toContain('**x**');
+    expect(text).toContain('[원문](https://example.com/a?x=1&y="2")');
+    expect(text).not.toContain('javascript:');
+    expect(provider.formatText('@[모두](here) 안녕', 'info').text).not.toMatch(/@\[/);
+  });
+
+  it('길면 한도 안으로 줄인다', () => {
+    const fields = Array.from({ length: 200 }, (_, i) => ({ label: `필드${i}`, value: 'x'.repeat(100) }));
+    expect(provider.format(message({ fields })).text.length).toBeLessThanOrEqual(8000);
+    expect(provider.formatText('y'.repeat(20000), 'info').text.length).toBeLessThanOrEqual(8000);
+  });
+
+  it('설정된 주소로 보내고 결과를 나눈다 (주소는 오류에 남기지 않는다)', async () => {
+    reply(json({ ok: true, id: 7 }));
+    expect(await provider.send({}, { text: 'a' })).toEqual({ status: 'SENT', providerMessageId: '7' });
+    expect(calls[0]).toMatchObject({ url, body: { text: 'a' }, redirect: 'error' });
+
+    reply(json({ success: false, code: 429, data: 'ThrottlerException: Too Many Requests' }, 429, { 'Retry-After': '30' }));
+    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'RETRY', retryAfterMs: 30_000 });
+    reply(json({}, 502));
+    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'RETRY' });
+    reply(json({ success: false, code: 404, data: '존재하지 않는 받는 주소입니다.' }, 404));
+    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true });
+    reply(json({ success: false, code: 403, data: '꺼 둔 받는 주소입니다.' }, 403));
+    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: true, error: '착착: 꺼 둔 받는 주소입니다. 고친 뒤 다시 연결해 주세요.' });
+    reply(json({ success: false, code: 400, data: ['text must be shorter'] }, 400));
+    expect(await provider.send({}, { text: 'a' })).toMatchObject({ status: 'PERMANENT', channelBroken: false, error: 'text must be shorter' });
+
+    provider.fetchImpl = async () => {
+      throw new TypeError(`fetch failed ${url}`);
+    };
+    const failed = await provider.send({}, { text: 'a' });
+    expect(failed).toMatchObject({ status: 'RETRY' });
+    expect(JSON.stringify(failed)).not.toContain('c0ffeec0ffee');
   });
 });

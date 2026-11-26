@@ -34,6 +34,8 @@ const schema = z.object({
   DISCORD_BOT_TOKEN: optional,
   DISCORD_CLIENT_ID: optional,
   DISCORD_CLIENT_SECRET: optional,
+  /** 착착 커스텀 봇의 받는 주소. 이 주소로 보내면 그 봇이 초대된 채널에 글을 올린다. */
+  CHAKCHAK_BOT_URL: optional,
   COOKIE_SECURE: optional,
   SESSION_TTL_DAYS: int(14, 1),
   /** GitHub OAuth App 의 Client ID / Secret. 로그인·가입은 GitHub 계정으로만 한다. */
@@ -87,6 +89,7 @@ export interface AppEnv {
   databasePath: string;
   telegramBotToken?: string;
   discord: { botToken: string; clientId: string; clientSecret: string } | null;
+  chakchakBotUrl?: string;
   cookieSecure: boolean;
   sessionTtlDays: number;
   githubOAuth: { clientId: string; clientSecret: string } | null;
@@ -137,6 +140,7 @@ export function loadEnv(): AppEnv {
       parsed.DISCORD_BOT_TOKEN && parsed.DISCORD_CLIENT_ID && parsed.DISCORD_CLIENT_SECRET
         ? { botToken: parsed.DISCORD_BOT_TOKEN, clientId: parsed.DISCORD_CLIENT_ID, clientSecret: parsed.DISCORD_CLIENT_SECRET }
         : null,
+    chakchakBotUrl: loadChakchakBotUrl(parsed.CHAKCHAK_BOT_URL),
     // NODE_ENV 설정을 잊어도 HTTPS 주소라면 Secure 쿠키를 쓴다.
     cookieSecure: flag(parsed.COOKIE_SECURE, production || parsed.APP_ORIGIN.startsWith('https://')),
     sessionTtlDays: parsed.SESSION_TTL_DAYS,
@@ -173,6 +177,16 @@ export function loadEnv(): AppEnv {
     disableIngestion: parsed.DISABLE_INGESTION,
   };
   return cached;
+}
+
+/** 착착에서 복사한 받는 주소만 받는다. 주소에 토큰이 들어 있으므로 오류에 값을 넣지 않는다. */
+function loadChakchakBotUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const url = URL.canParse(value) ? new URL(value) : null;
+  if (!url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || !/^\/api\/hooks\/bot\/[0-9a-f]{48}$/.test(url.pathname)) {
+    throw new Error('CHAKCHAK_BOT_URL 형식이 올바르지 않습니다. 착착 커스텀 봇의 [알림 받기]에서 복사한 받는 주소를 그대로 넣어 주세요.');
+  }
+  return url.toString();
 }
 
 function loadGithubApp(parsed: z.infer<typeof schema>): AppEnv['githubApp'] {

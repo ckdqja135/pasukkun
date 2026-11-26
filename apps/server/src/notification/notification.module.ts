@@ -6,13 +6,14 @@ import { ChannelService } from './channel.service.js';
 import { DeliveryService } from './delivery.service.js';
 import { MessageBuilder } from './message-builder.service.js';
 import { NotificationController } from './notification.controller.js';
+import { ChakchakProvider } from './providers/chakchak.provider.js';
 import { DiscordProvider } from './providers/discord.provider.js';
 import { TelegramProvider } from './providers/telegram.provider.js';
 import { RuleService } from './rule.service.js';
 
 @Module({
   controllers: [NotificationController, BriefingController],
-  providers: [BotListener, ChannelService, RuleService, DeliveryService, MessageBuilder, BriefingService, TelegramProvider, DiscordProvider],
-  exports: [BotListener, ChannelService, DeliveryService, BriefingService, TelegramProvider, DiscordProvider],
+  providers: [BotListener, ChannelService, RuleService, DeliveryService, MessageBuilder, BriefingService, TelegramProvider, DiscordProvider, ChakchakProvider],
+  exports: [BotListener, ChannelService, DeliveryService, BriefingService, TelegramProvider, DiscordProvider, ChakchakProvider],
 })
 export class NotificationModule {}

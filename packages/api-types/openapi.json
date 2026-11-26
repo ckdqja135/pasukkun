@@ -1416,6 +1416,38 @@
         ]
       }
     },
+    "/api/v1/channels/chakchak": {
+      "post": {
+        "operationId": "NotificationController_connectChakchak",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelLinkInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "착착 연결: 서버 설정의 착착 봇 받는 주소로 확인 메시지를 보내고 채널을 만든다.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/channels/links/{id}": {
       "get": {
         "operationId": "NotificationController_linkStatus",
@@ -4486,12 +4518,17 @@
           "discord": {
             "type": "boolean",
             "description": "서비스 디스코드 봇이 설정되어 있는지"
+          },
+          "chakchak": {
+            "type": "boolean",
+            "description": "착착 커스텀 봇의 받는 주소가 설정되어 있는지"
           }
         },
         "required": [
           "telegram",
           "telegramBotUsername",
-          "discord"
+          "discord",
+          "chakchak"
         ]
       },
       "ChannelDto": {
@@ -4503,7 +4540,8 @@
           "type": {
             "enum": [
               "TELEGRAM",
-              "DISCORD"
+              "DISCORD",
+              "CHAKCHAK"
             ],
             "type": "string"
           },
@@ -5278,7 +5316,8 @@
             "type": "string",
             "enum": [
               "TELEGRAM",
-              "DISCORD"
+              "DISCORD",
+              "CHAKCHAK"
             ]
           },
           "status": {

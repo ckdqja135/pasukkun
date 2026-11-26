@@ -93,6 +93,14 @@ export class NotificationController {
     return this.channels.startDiscordLink(user.id, dto.name);
   }
 
+  /** 착착 연결: 서버 설정의 착착 봇 받는 주소로 확인 메시지를 보내고 채널을 만든다. */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('channels/chakchak')
+  @HttpCode(200)
+  connectChakchak(@CurrentUser() user: AuthUser, @Body() dto: ChannelLinkInputDto): Promise<ChannelDto> {
+    return this.channels.connectChakchak(user.id, dto.name);
+  }
+
   /** 디스코드에서 돌아오는 곳. 알림 설정 화면으로 돌려보낸다. */
   @Public()
   @Throttle({ default: { limit: 20, ttl: 60_000 } })

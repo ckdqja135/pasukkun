@@ -85,14 +85,14 @@ describe('인증과 접근 제어', () => {
     const prisma = ctx.get(PrismaService);
     const row = await prisma.notificationChannel.findUniqueOrThrow({ where: { id: channelId } });
     expect(row.target).toEqual({ guildId: '222222222222222222', guildName: 'server-222', channelId: '333333333333333333', channelName: 'alerts' });
-    const secrets = /fixture-discord-bot-token|fixture-discord-client-secret|AAfixturefixture|fixture-user-token/;
+    const secrets = /fixture-discord-bot-token|fixture-discord-client-secret|AAfixturefixture|fixture-user-token|c0ffeec0ffee/;
     const dump = JSON.stringify([await prisma.notificationChannel.findMany(), await prisma.channelLinkRequest.findMany(), await prisma.appState.findMany()]);
     expect(dump).not.toMatch(secrets);
     for (const response of [await alice.get('/channels'), await alice.get('/channels/providers'), await alice.post(`/channels/${channelId}/test`), await alice.get('/deliveries'), await alice.get('/rules')]) {
       expect(response.status).toBeLessThan(300);
       expect(JSON.stringify(response.body)).not.toMatch(secrets);
     }
-    expect((await alice.get('/channels/providers').expect(200)).body).toEqual({ telegram: true, telegramBotUsername: 'pasukkun_fixture_bot', discord: true });
+    expect((await alice.get('/channels/providers').expect(200)).body).toEqual({ telegram: true, telegramBotUsername: 'pasukkun_fixture_bot', discord: true, chakchak: true });
   });
 
   describe('채널 연결 흐름', () => {

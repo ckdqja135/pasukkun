@@ -50,7 +50,7 @@ export class BriefingNoticeDto {
 
 export class BriefingChannelDto {
   name: string;
-  type: 'TELEGRAM' | 'DISCORD';
+  type: 'TELEGRAM' | 'DISCORD' | 'CHAKCHAK';
   /** 이 채널로 보낸 결과 (발송 상태) */
   status: string;
 }

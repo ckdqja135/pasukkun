@@ -15,6 +15,7 @@ import type {
   DiscordLinkDto,
   TelegramLinkDto,
 } from './notification.dto.js';
+import { ChakchakProvider } from './providers/chakchak.provider.js';
 import { DiscordProvider } from './providers/discord.provider.js';
 import type { NotificationProvider, SendResult } from './providers/provider.js';
 import { TelegramProvider, type TelegramChat, type TelegramUpdate } from './providers/telegram.provider.js';
@@ -54,12 +55,14 @@ export class ChannelService {
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramProvider,
     private readonly discord: DiscordProvider,
+    private readonly chakchak: ChakchakProvider,
     @Inject(APP_ENV) private readonly env: AppEnv,
   ) {}
 
   provider(type: string): NotificationProvider {
     if (type === 'TELEGRAM') return this.telegram as NotificationProvider;
     if (type === 'DISCORD') return this.discord as NotificationProvider;
+    if (type === 'CHAKCHAK') return this.chakchak as NotificationProvider;
     throw new BadRequestException(`지원하지 않는 채널 유형입니다: ${type}`);
   }
 
@@ -68,6 +71,7 @@ export class ChannelService {
       telegram: this.telegram.enabled(),
       telegramBotUsername: this.telegram.enabled() ? await this.telegram.botUsername() : null,
       discord: this.discord.enabled(),
+      chakchak: this.chakchak.enabled(),
     };
   }
 
@@ -168,10 +172,14 @@ export class ChannelService {
 
   // - 연결 공통 -
 
-  private async createLinkRequest(userId: string, type: 'TELEGRAM' | 'DISCORD', name: string): Promise<{ request: LinkRow; secret: string }> {
+  private async assertChannelRoom(userId: string): Promise<void> {
     if ((await this.prisma.notificationChannel.count({ where: { userId } })) >= MAX_CHANNELS) {
       throw new BadRequestException(`알림 채널은 계정당 ${MAX_CHANNELS}개까지 연결할 수 있습니다.`);
     }
+  }
+
+  private async createLinkRequest(userId: string, type: 'TELEGRAM' | 'DISCORD', name: string): Promise<{ request: LinkRow; secret: string }> {
+    await this.assertChannelRoom(userId);
     const recent = await this.prisma.channelLinkRequest.count({ where: { userId, createdAt: { gt: new Date(Date.now() - 3_600_000) } } });
     if (recent >= MAX_LINKS_PER_HOUR) throw new HttpException('연결 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.', HttpStatus.TOO_MANY_REQUESTS);
     const secret = randomToken(24);
@@ -196,7 +204,7 @@ export class ChannelService {
     const open = request.status === 'PENDING' || request.status === 'GUILD_SELECTED';
     return {
       requestId: request.id,
-      type: request.type,
+      type: request.type as ChannelLinkStatusDto['type'],
       status: (open && this.expired(request) ? 'EXPIRED' : request.status) as ChannelLinkStatusDto['status'],
       guildName: request.guildName,
       channelId: request.channelId,
@@ -204,7 +212,7 @@ export class ChannelService {
     };
   }
 
-  private async upsertChannel(userId: string, type: 'TELEGRAM' | 'DISCORD', match: (target: Record<string, unknown>) => boolean, data: { name: string; label: string; target: object }): Promise<ChannelRow> {
+  private async upsertChannel(userId: string, type: 'TELEGRAM' | 'DISCORD' | 'CHAKCHAK', match: (target: Record<string, unknown>) => boolean, data: { name: string; label: string; target: object }): Promise<ChannelRow> {
     const existing = (await this.prisma.notificationChannel.findMany({ where: { userId, type } })).find((row) => match((row.target ?? {}) as Record<string, unknown>));
     if (existing) {
       return this.prisma.notificationChannel.update({ where: { id: existing.id }, data: { ...data, status: 'ACTIVE', lastError: null, lastErrorAt: null } });
@@ -364,6 +372,18 @@ export class ChannelService {
     await this.prisma.channelLinkRequest.update({ where: { id: request.id }, data: { status: 'COMPLETED', channelId: channel.id } });
     await this.prisma.notificationChannel.update({ where: { id: channel.id }, data: { lastSuccessAt: new Date() } });
     return toChannelDto((await this.prisma.notificationChannel.findUniqueOrThrow({ where: { id: channel.id } })));
+  }
+
+  // - 착착 -
+
+  /** 착착 봇이 초대된 채널에 확인 메시지를 올리고 채널을 만든다. 보낼 곳은 서버 설정의 주소 하나라 계정마다 한 채널이다. */
+  async connectChakchak(userId: string, name: string): Promise<ChannelDto> {
+    if (!this.chakchak.enabled()) throw new BadRequestException('이 서버에는 착착 봇의 받는 주소가 설정되어 있지 않습니다.');
+    if (!(await this.prisma.notificationChannel.findFirst({ where: { userId, type: 'CHAKCHAK' }, select: { id: true } }))) await this.assertChannelRoom(userId);
+    const result = await this.send({ type: 'CHAKCHAK', target: {} }, this.testMessage(name.trim()), null);
+    if (result.status !== 'SENT') throw new BadRequestException(`착착으로 메시지를 보내지 못했습니다: ${result.error}`);
+    const channel = await this.upsertChannel(userId, 'CHAKCHAK', () => true, { name: name.trim(), label: '착착 · 봇이 초대된 채널', target: {} });
+    return toChannelDto(await this.prisma.notificationChannel.update({ where: { id: channel.id }, data: { lastSuccessAt: new Date() } }));
   }
 
   /** 오래된 연결 요청 정리 */
