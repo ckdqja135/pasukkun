@@ -132,7 +132,7 @@ export class TelegramProvider implements NotificationProvider<TelegramTarget, Te
     const links = message.links
       .filter((link) => /^https?:\/\//i.test(link.url))
       .map((link) => `<a href="${escapeAttribute(link.url)}">${escapeHtml(link.label)}</a>`);
-    const tail = [...(links.length ? ['', links.join(' | ')] : []), '', `<i>${escapeHtml(message.footer)}</i>`];
+    const tail = [...(links.length ? ['', links.join(' | ')] : []), ...(message.footer ? ['', `<i>${escapeHtml(message.footer)}</i>`] : [])];
 
     // 길이 제한(4096자)을 넘으면 필드 본문부터 줄인다. 태그가 중간에 잘리지 않도록 줄 단위로 처리한다.
     let body = lines;

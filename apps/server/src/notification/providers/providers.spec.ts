@@ -170,7 +170,7 @@ describe('DiscordProvider (서비스 봇)', () => {
     expect((embed.title ?? '').length).toBeLessThanOrEqual(256);
     expect(embed.description.length).toBeLessThanOrEqual(4096);
     expect(embed.fields.length).toBeLessThanOrEqual(25);
-    const total = (embed.title ?? '').length + embed.description.length + embed.footer.text.length + embed.fields.reduce((sum, f) => sum + f.name.length + f.value.length, 0);
+    const total = (embed.title ?? '').length + embed.description.length + (embed.footer?.text.length ?? 0) + embed.fields.reduce((sum, f) => sum + f.name.length + f.value.length, 0);
     expect(total).toBeLessThanOrEqual(6000);
     expect(provider.formatText('x'.repeat(9000), 'info').embeds[0].description.length).toBeLessThanOrEqual(4096);
   });
@@ -278,5 +278,21 @@ describe('ChakchakProvider (착착 커스텀 봇)', () => {
     const failed = await provider.send({ channel: 'web-보안' }, { text: 'a' });
     expect(failed).toMatchObject({ status: 'RETRY' });
     expect(JSON.stringify(failed)).not.toContain('c0ffeec0ffee');
+  });
+});
+
+describe('꼬리 줄', () => {
+  it('꼬리 줄이 없는 알림(보안 브리핑)은 세 채널 모두 붙이지 않고, 있는 알림은 그대로 붙인다', () => {
+    const noFooter = { ...message(), footer: undefined };
+    const telegram = new TelegramProvider(env);
+    expect(telegram.format(noFooter).text).not.toContain('<i>');
+    expect(telegram.format(noFooter).text.split('\n').pop()).toContain('<a href=');
+    expect(telegram.format(message()).text).toMatch(/<i>pasukkun<\/i>$/);
+    const discord = new DiscordProvider(env);
+    expect(discord.format(noFooter).embeds[0].footer).toBeUndefined();
+    expect(discord.format(message()).embeds[0].footer).toEqual({ text: 'pasukkun' });
+    const chakchak = new ChakchakProvider({ chakchak: { url: 'http://localhost:3095', botToken: 'x' } } as AppEnv);
+    expect(chakchak.format(noFooter).text.split('\n').pop()).toMatch(/^\[원문\]/);
+    expect(chakchak.format(message()).text.endsWith('\npasukkun')).toBe(true);
   });
 });

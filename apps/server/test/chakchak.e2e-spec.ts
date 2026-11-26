@@ -79,6 +79,7 @@ describe('알림: 착착 봇 (채널마다 따로)', () => {
     expect(sentTo('web-보안')).toHaveLength(1);
     expect(sentTo('api-보안')).toHaveLength(1);
     expect(String(sentTo('web-보안')[0].body.text)).toMatch(/^\*\*\[.*보안 브리핑.*\]/);
+    expect(String(sentTo('web-보안')[0].body.text)).not.toContain('pasukkun · 보안 브리핑');
     const list = (await user.get('/briefings').expect(200)).body as { items: Array<{ channels: Array<{ type: string; status: string }> }> };
     expect(list.items.flatMap((item) => item.channels)).toEqual([
       expect.objectContaining({ type: 'CHAKCHAK', status: 'SENT' }),

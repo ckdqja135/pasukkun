@@ -335,7 +335,6 @@ export class MessageBuilder {
         { label: '비상 달력', url: `${this.env.appOrigin}/calendar` },
       ],
       tone: briefing.tone as NotificationMessage['tone'],
-      footer: briefing.aiModel ? `pasukkun · 보안 브리핑 · AI 요약 ${briefing.aiModel}` : 'pasukkun · 보안 브리핑',
     };
   }
 }

@@ -74,6 +74,8 @@ function useProviders() {
   return useQuery({ queryKey: ['channel-providers'], queryFn: () => unwrap(api.GET('/api/v1/channels/providers')), staleTime: 5 * 60_000 });
 }
 
+const CHANNEL_TYPE_LABEL: Record<Channel['type'], string> = { TELEGRAM: 'Telegram', DISCORD: 'Discord', CHAKCHAK: '착착' };
+
 const DISCORD_ERRORS: Record<string, string> = {
   expired: '디스코드 연결 요청이 만료되었습니다. 다시 시도해 주세요.',
   session: '연결을 시작한 계정으로 로그인한 같은 브라우저에서 마쳐야 합니다. 다시 시도해 주세요.',
@@ -731,7 +733,7 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
               <div key={channel.id} className="flex items-center gap-2">
                 <Checkbox id={`rc-${channel.id}`} checked={channelIds.includes(channel.id)} onCheckedChange={() => setChannelIds((current) => toggleIn(current, channel.id))} />
                 <Label htmlFor={`rc-${channel.id}`} className="font-normal">
-                  {channel.name} <span className="text-muted-foreground">({channel.type === 'TELEGRAM' ? 'Telegram' : 'Discord'})</span>
+                  {channel.name} <span className="text-muted-foreground">({CHANNEL_TYPE_LABEL[channel.type]})</span>
                 </Label>
               </div>
             ))}

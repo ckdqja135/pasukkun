@@ -102,7 +102,7 @@ export class ChakchakProvider implements NotificationProvider<ChakchakTarget, Ch
     const links = message.links
       .filter((link) => /^https?:\/\/[^\s)]+$/i.test(link.url))
       .map((link) => `[${plain(link.label).replace(/[[\]]/g, '')}](${link.url})`);
-    const tail = [...(links.length ? ['', links.join(' | ')] : []), '', plain(message.footer)];
+    const tail = [...(links.length ? ['', links.join(' | ')] : []), ...(message.footer ? ['', plain(message.footer)] : [])];
 
     // 길이 제한을 넘으면 필드 본문부터 줄인다 (줄 단위로 잘라 꾸밈 문법이 중간에 끊기지 않게).
     let body = lines;

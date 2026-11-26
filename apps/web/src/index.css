@@ -49,6 +49,8 @@
 }
 
 :root {
+    /* 드롭다운 목록 같은 브라우저 기본 부품도 테마 색으로 그리게 한다 */
+    color-scheme: light;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -84,6 +86,7 @@
 }
 
 .dark {
+    color-scheme: dark;
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);
@@ -129,6 +132,10 @@
     }
   html {
     @apply font-sans;
+    }
+  /* 드롭다운 목록: 테마 설정을 따르지 않는 브라우저에서도 글자가 바탕에 묻히지 않게 색을 직접 정한다 */
+  option {
+    @apply bg-popover text-popover-foreground;
     }
 }
 /* 외부 공지 본문 */

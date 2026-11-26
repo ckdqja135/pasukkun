@@ -302,8 +302,9 @@ describe('알림: Outbox 중계, 중복 억제, 재시도', () => {
     ctx.bots.discordSent.length = 0;
     expect(await deliveries.createDueDigests(new Date(Date.now() + 2 * 86_400_000))).toBe(1);
     await flush();
-    const embed = (discord()[0].body.embeds as Array<{ title: string; description: string; fields: Array<{ name: string }> }>)[0];
+    const embed = (discord()[0].body.embeds as Array<{ title: string; description: string; fields: Array<{ name: string }>; footer?: unknown }>)[0];
     expect(embed.title).toMatch(/^\[.*보안 브리핑.*\] - 새 이슈 없음$/);
+    expect(embed.footer).toBeUndefined();
     expect(embed.description).toContain('패치 0건');
     expect(embed.fields.map((field) => field.name)).toContain('패치 확인 (지난 브리핑 이후 점검)');
     // 보낸 브리핑은 저장되어 화면에서 다시 볼 수 있다.

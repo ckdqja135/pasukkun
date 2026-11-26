@@ -20,7 +20,7 @@ export interface DiscordEmbed {
   url?: string;
   color: number;
   fields: Array<{ name: string; value: string; inline: boolean }>;
-  footer: { text: string };
+  footer?: { text: string };
 }
 
 export interface DiscordPayload {
@@ -251,12 +251,12 @@ export class DiscordProvider implements NotificationProvider<DiscordTarget, Disc
       description: clean(description, LIMITS.description),
       color: COLORS[message.tone],
       fields,
-      footer: { text: clean(message.footer, LIMITS.footer) },
+      ...(message.footer ? { footer: { text: clean(message.footer, LIMITS.footer) } } : {}),
     };
     if (links[0]) embed.url = links[0].url;
 
     // 합계 6000자 제한: 넘으면 뒤쪽 필드부터 덜어낸다.
-    const total = () => (embed.title ?? '').length + embed.description.length + embed.footer.text.length + embed.fields.reduce((sum, f) => sum + f.name.length + f.value.length, 0);
+    const total = () => (embed.title ?? '').length + embed.description.length + (embed.footer?.text.length ?? 0) + embed.fields.reduce((sum, f) => sum + f.name.length + f.value.length, 0);
     while (total() > LIMITS.total && embed.fields.length > 0) embed.fields.pop();
     if (total() > LIMITS.total) embed.description = truncateText(embed.description, Math.max(100, embed.description.length - (total() - LIMITS.total)));
     return { embeds: [embed], allowed_mentions: { parse: [] } };

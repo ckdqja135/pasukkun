@@ -12,7 +12,8 @@ export interface NotificationMessage {
   links: Array<{ label: string; url: string }>;
   /** 색·아이콘 선택용 */
   tone: 'urgent' | 'high' | 'medium' | 'low' | 'info';
-  footer: string;
+  /** 맨 아래 꼬리 줄. 없으면 붙이지 않는다 (보안 브리핑). */
+  footer?: string;
   /** 사용자 문구 틀에 넣을 값. 없으면(요약 등) 틀을 쓰지 않고 기본 형식으로 보낸다. */
   values?: TemplateValues;
   /** 사용자 문구 틀을 써도 빠지면 안 되는 안내. 틀로 만든 문구 앞에 붙인다. */
