@@ -1611,7 +1611,7 @@ export interface components {
             id: string;
             name: string;
             /** @enum {string} */
-            kind: "TECH_INTEREST" | "PROJECT_IMPACT";
+            kind: "TECH_INTEREST" | "PROJECT_IMPACT" | "ALL_NEW";
             eventTypes: string[];
             /** @enum {string|null} */
             minSeverity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
@@ -1635,13 +1635,13 @@ export interface components {
         RuleInputDto: {
             name: string;
             /**
-             * @description TECH_INTEREST: 저장된 관심 기술 기준 / PROJECT_IMPACT: 프로젝트 영향 기준
+             * @description TECH_INTEREST: 저장된 관심 기술 기준 / PROJECT_IMPACT: 프로젝트 영향 기준 / ALL_NEW: 기술과 상관없이 새로 공개된 취약점 전체 (보안 브리핑으로만)
              * @enum {string}
              */
-            kind: "TECH_INTEREST" | "PROJECT_IMPACT";
+            kind: "TECH_INTEREST" | "PROJECT_IMPACT" | "ALL_NEW";
             eventTypes: ("TECH_NEW_VULN" | "PROJECT_NEW_MATCH" | "KEV_ADDED" | "PATCH_AVAILABLE" | "AFFECTED_RANGE_CHANGED" | "PRIORITY_RAISED" | "INITIAL_SCAN_SUMMARY")[];
             /**
-             * @description 이 심각도 이상만. 비우면 제한 없음. 심각도 미제공 항목은 항상 포함된다.
+             * @description 이 심각도 이상만. 비우면 제한 없음. 심각도 미제공 항목은 항상 포함된다 (ALL_NEW 는 기준이 꼭 있어야 하고, 미제공은 점수가 매겨진 뒤에 넣는다).
              * @enum {string|null}
              */
             minSeverity?: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;

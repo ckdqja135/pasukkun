@@ -9,6 +9,8 @@ export const PROJECT_EVENT_TYPES = [
   'PRIORITY_RAISED',
   'INITIAL_SCAN_SUMMARY',
 ] as const;
+/** 전체 신규 취약점 브리핑: 새로 공개된 취약점과 KEV 신규 등재를 받는 시각에 모은다 (이벤트로 보내지 않는다). */
+export const ALL_NEW_EVENT_TYPES = ['TECH_NEW_VULN', 'KEV_ADDED'] as const;
 
 const SEVERITY_RANK: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, UNKNOWN: 0 };
 

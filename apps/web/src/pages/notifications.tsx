@@ -31,6 +31,15 @@ type EventType = RuleInput['eventTypes'][number];
 
 const TECH_EVENTS: EventType[] = ['TECH_NEW_VULN', 'KEV_ADDED', 'PATCH_AVAILABLE', 'AFFECTED_RANGE_CHANGED'];
 const PROJECT_EVENTS: EventType[] = ['PROJECT_NEW_MATCH', 'PRIORITY_RAISED', 'KEV_ADDED', 'PATCH_AVAILABLE', 'AFFECTED_RANGE_CHANGED', 'INITIAL_SCAN_SUMMARY'];
+const ALL_NEW_EVENTS: EventType[] = ['TECH_NEW_VULN', 'KEV_ADDED'];
+const KIND_EVENTS: Record<Rule['kind'], EventType[]> = { TECH_INTEREST: TECH_EVENTS, PROJECT_IMPACT: PROJECT_EVENTS, ALL_NEW: ALL_NEW_EVENTS };
+const ALL_NEW_EVENT_LABEL: Record<string, string> = { TECH_NEW_VULN: '새로 공개된 취약점 (심각도 기준 이상)', KEV_ADDED: 'KEV 신규 등재 (심각도와 상관없이)' };
+const eventLabel = (kind: Rule['kind'], type: string) => (kind === 'ALL_NEW' ? ALL_NEW_EVENT_LABEL[type] : undefined) ?? EVENT_LABEL[type];
+const KIND_DEFAULTS: Record<Rule['kind'], { title: string; name: string; eventTypes: EventType[]; minSeverity: string }> = {
+  TECH_INTEREST: { title: '관심 기술 알림 규칙', name: '관심 기술 신규 취약점', eventTypes: ['TECH_NEW_VULN', 'KEV_ADDED'], minSeverity: 'HIGH' },
+  PROJECT_IMPACT: { title: '프로젝트 영향 알림 규칙', name: '프로젝트 영향', eventTypes: ['PROJECT_NEW_MATCH', 'PRIORITY_RAISED', 'KEV_ADDED', 'INITIAL_SCAN_SUMMARY'], minSeverity: '' },
+  ALL_NEW: { title: '전체 신규 취약점 브리핑 규칙', name: '전체 신규 취약점 브리핑', eventTypes: ['TECH_NEW_VULN', 'KEV_ADDED'], minSeverity: 'CRITICAL' },
+};
 
 function ChannelStatus({ channel }: { channel: Channel }) {
   if (channel.status === 'ACTIVE') return <Pill tone="green" icon={CheckCircle2}>연결됨</Pill>;
@@ -505,7 +514,7 @@ function RulesTab() {
   const queryClient = useQueryClient();
   const rules = useQuery({ queryKey: ['rules'], queryFn: () => unwrap(api.GET('/api/v1/rules')) });
   const channels = useChannels();
-  const [editing, setEditing] = useState<Rule | 'TECH_INTEREST' | 'PROJECT_IMPACT' | null>(null);
+  const [editing, setEditing] = useState<Rule | Rule['kind'] | null>(null);
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['rules'] });
   const remove = useMutation({
     mutationFn: (id: string) => unwrap(api.DELETE('/api/v1/rules/{id}', { params: { path: { id } } })),
@@ -529,7 +538,7 @@ function RulesTab() {
   const channelName = (id: string) => channels.data.find((channel) => channel.id === id)?.name ?? '(삭제된 채널)';
   const noChannels = channels.data.length === 0;
 
-  const section = (kind: 'TECH_INTEREST' | 'PROJECT_IMPACT', title: string, description: string) => {
+  const section = (kind: Rule['kind'], title: string, description: string) => {
     const items = rules.data.filter((rule) => rule.kind === kind);
     return (
       <Card>
@@ -567,12 +576,12 @@ function RulesTab() {
                   <div className="mt-2 flex flex-wrap gap-1">
                     {rule.eventTypes.map((type) => (
                       <Badge key={type} variant="secondary">
-                        {EVENT_LABEL[type]}
+                        {eventLabel(kind, type)}
                       </Badge>
                     ))}
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {rule.scheduleText}{rule.digestFormat === 'BRIEFING' && rule.schedule.type !== 'IMMEDIATE' ? ' 보안 브리핑' : ''} · 문구 {rule.template ? '직접 정함' : '기본'} · 심각도 {rule.minSeverity ? `${SEVERITY_LABEL[rule.minSeverity]} 이상 (미제공 포함)` : '제한 없음'} · 채널{' '}
+                    {rule.scheduleText}{rule.digestFormat === 'BRIEFING' && rule.schedule.type !== 'IMMEDIATE' ? ' 보안 브리핑' : ''}{kind === 'ALL_NEW' ? '' : ` · 문구 ${rule.template ? '직접 정함' : '기본'}`} · 심각도 {rule.minSeverity ? `${SEVERITY_LABEL[rule.minSeverity]} 이상${kind === 'ALL_NEW' ? '' : ' (미제공 포함)'}` : '제한 없음'} · 채널{' '}
                     {rule.channelIds.map(channelName).join(', ')}
                     {kind === 'PROJECT_IMPACT' ? ` · 프로젝트 ${rule.projectIds.length ? `${rule.projectIds.length}개 지정` : '전체'}` : ''}
                   </p>
@@ -610,6 +619,11 @@ function RulesTab() {
         '프로젝트 영향 알림',
         '프로젝트의 설치 버전이 공지의 영향 범위에 포함될 때 알립니다. 프로젝트를 처음 검사할 때는 기존 항목을 하나씩 보내지 않고 요약 한 건으로 알립니다.',
       )}
+      {section(
+        'ALL_NEW',
+        '전체 신규 취약점 브리핑',
+        '관심 기술과 상관없이 새로 공개된 취약점을 받는 시각마다 보안 브리핑으로 모아 보냅니다. 항목마다 우리 프로젝트가 영향받는지 같이 적습니다.',
+      )}
       {editing ? (
         <RuleDialog
           rule={typeof editing === 'string' ? null : editing}
@@ -623,15 +637,16 @@ function RulesTab() {
   );
 }
 
-function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | null; kind: 'TECH_INTEREST' | 'PROJECT_IMPACT'; channels: Channel[]; onClose: () => void; onSaved: () => void }) {
+function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | null; kind: Rule['kind']; channels: Channel[]; onClose: () => void; onSaved: () => void }) {
   const projects = useProjects();
   const interests = useInterests();
-  const events = kind === 'TECH_INTEREST' ? TECH_EVENTS : PROJECT_EVENTS;
-  const [name, setName] = useState(rule?.name ?? (kind === 'TECH_INTEREST' ? '관심 기술 신규 취약점' : '프로젝트 영향'));
-  const [eventTypes, setEventTypes] = useState<EventType[]>((rule?.eventTypes as EventType[]) ?? (kind === 'TECH_INTEREST' ? ['TECH_NEW_VULN', 'KEV_ADDED'] : ['PROJECT_NEW_MATCH', 'PRIORITY_RAISED', 'KEV_ADDED', 'INITIAL_SCAN_SUMMARY']));
-  const [minSeverity, setMinSeverity] = useState<string>(rule?.minSeverity ?? (kind === 'TECH_INTEREST' ? 'HIGH' : ''));
-  const [schedule, setSchedule] = useState<ScheduleValue>((rule?.schedule as ScheduleValue | undefined) ?? { type: 'IMMEDIATE' });
-  const [digestFormat, setDigestFormat] = useState<'LIST' | 'BRIEFING'>(rule?.digestFormat ?? 'LIST');
+  const events = KIND_EVENTS[kind];
+  const allNew = kind === 'ALL_NEW';
+  const [name, setName] = useState(rule?.name ?? KIND_DEFAULTS[kind].name);
+  const [eventTypes, setEventTypes] = useState<EventType[]>((rule?.eventTypes as EventType[]) ?? KIND_DEFAULTS[kind].eventTypes);
+  const [minSeverity, setMinSeverity] = useState<string>(rule?.minSeverity ?? KIND_DEFAULTS[kind].minSeverity);
+  const [schedule, setSchedule] = useState<ScheduleValue>((rule?.schedule as ScheduleValue | undefined) ?? (allNew ? { type: 'DAILY', times: ['09:00', '14:00'] } : { type: 'IMMEDIATE' }));
+  const [digestFormat, setDigestFormat] = useState<'LIST' | 'BRIEFING'>(rule?.digestFormat ?? (allNew ? 'BRIEFING' : 'LIST'));
   const [template, setTemplate] = useState<string | null>(rule?.template ?? null);
   const [channelIds, setChannelIds] = useState<string[]>(rule?.channelIds ?? (channels[0] ? [channels[0].id] : []));
   const [projectIds, setProjectIds] = useState<string[]>(rule?.projectIds ?? []);
@@ -646,8 +661,8 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
         minSeverity: (minSeverity || null) as RuleInput['minSeverity'],
         projectIds: kind === 'PROJECT_IMPACT' ? projectIds : [],
         schedule,
-        digestFormat: schedule.type === 'IMMEDIATE' ? 'LIST' : digestFormat,
-        template,
+        digestFormat: allNew ? 'BRIEFING' : schedule.type === 'IMMEDIATE' ? 'LIST' : digestFormat,
+        template: allNew ? null : template,
         channelIds,
         enabled: rule?.enabled ?? true,
       };
@@ -669,7 +684,7 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{kind === 'TECH_INTEREST' ? '관심 기술 알림 규칙' : '프로젝트 영향 알림 규칙'}</DialogTitle>
+          <DialogTitle>{KIND_DEFAULTS[kind].title}</DialogTitle>
           <DialogDescription>같은 내용의 알림은 채널·취약점·프로젝트·변경 내용을 기준으로 한 번만 보냅니다.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 text-sm">
@@ -694,7 +709,7 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
               <div key={type} className="flex items-center gap-2">
                 <Checkbox id={`ev-${type}`} checked={eventTypes.includes(type)} onCheckedChange={() => setEventTypes((current) => toggleIn(current, type))} />
                 <Label htmlFor={`ev-${type}`} className="font-normal">
-                  {EVENT_LABEL[type]}
+                  {eventLabel(kind, type)}
                 </Label>
               </div>
             ))}
@@ -703,17 +718,23 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
             <div className="space-y-1.5">
               <Label htmlFor="rule-sev">심각도 기준</Label>
               <NativeSelect id="rule-sev" value={minSeverity} onChange={(e) => setMinSeverity(e.target.value)}>
-                <option value="">제한 없음</option>
+                {allNew ? null : <option value="">제한 없음</option>}
                 <option value="CRITICAL">치명적만</option>
                 <option value="HIGH">높음 이상</option>
                 <option value="MEDIUM">보통 이상</option>
                 <option value="LOW">낮음 이상</option>
               </NativeSelect>
-              <p className="text-xs text-muted-foreground">심각도가 제공되지 않은 공지는 기준과 무관하게 포함됩니다.</p>
+              <p className="text-xs text-muted-foreground">
+                {allNew ? '하루에 수백 건이 공개됩니다. 심각도가 아직 없는 공지는 점수가 매겨진 뒤의 브리핑에 넣습니다.' : '심각도가 제공되지 않은 공지는 기준과 무관하게 포함됩니다.'}
+              </p>
             </div>
-            <SchedulePicker value={schedule} onChange={setSchedule} idPrefix="rule" />
+            <SchedulePicker value={schedule} onChange={setSchedule} idPrefix="rule" allowImmediate={!allNew} />
           </div>
-          {schedule.type !== 'IMMEDIATE' ? (
+          {allNew ? (
+            <p className="text-xs text-muted-foreground">
+              받는 시각마다 보안 브리핑으로 보냅니다. 지난 브리핑 이후 새로 들어온 공지를 심각도 순으로 담고, 항목마다 우리 프로젝트 영향 여부를 적습니다. 한 번 넣은 공지는 다음 브리핑에 다시 넣지 않습니다. 새 공지가 없어도 보내고, 보낸 브리핑은 보안 브리핑 메뉴에 남습니다.
+            </p>
+          ) : schedule.type !== 'IMMEDIATE' ? (
             <div className="space-y-2">
               <Label htmlFor="rule-format">모아 받는 형식</Label>
               <NativeSelect id="rule-format" value={digestFormat} onChange={(e) => setDigestFormat(e.target.value as 'LIST' | 'BRIEFING')}>
@@ -752,10 +773,12 @@ function RuleDialog({ rule, kind, channels, onClose, onSaved }: { rule: Rule | n
               ))}
             </fieldset>
           ) : null}
-          <fieldset className="space-y-2 border-t pt-4">
-            <legend className="sr-only">알림 문구</legend>
-            <TemplateEditor kind={kind} value={template} onChange={setTemplate} />
-          </fieldset>
+          {kind !== 'ALL_NEW' ? (
+            <fieldset className="space-y-2 border-t pt-4">
+              <legend className="sr-only">알림 문구</legend>
+              <TemplateEditor kind={kind} value={template} onChange={setTemplate} />
+            </fieldset>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               취소

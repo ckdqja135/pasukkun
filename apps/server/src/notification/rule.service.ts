@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../db/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { RuleDto, RuleInputDto, ScheduleDto, TemplateInfoDto, TemplatePreviewDto, TemplatePreviewInputDto } from './notification.dto.js';
-import { PROJECT_EVENT_TYPES, TECH_EVENT_TYPES } from './rules.js';
+import { ALL_NEW_EVENT_TYPES, PROJECT_EVENT_TYPES, TECH_EVENT_TYPES } from './rules.js';
 import { describeSchedule, ScheduleError, validateSchedule, type DeliverySchedule } from './schedule.js';
 import { DEFAULT_TEMPLATES, PLACEHOLDERS, renderTemplate, TemplateError, validateTemplate, type TemplateValues } from './template.js';
 
@@ -44,6 +44,9 @@ const SAMPLE_VALUES: Record<'TECH_INTEREST' | 'PROJECT_IMPACT', TemplateValues> 
     원문: 'https://github.com/advisories/GHSA-xxxx-xxxx-xxxx',
   },
 };
+
+const KIND_EVENT_TYPES: Record<RuleInputDto['kind'], readonly string[]> = { TECH_INTEREST: TECH_EVENT_TYPES, PROJECT_IMPACT: PROJECT_EVENT_TYPES, ALL_NEW: ALL_NEW_EVENT_TYPES };
+const KIND_LABEL: Record<RuleInputDto['kind'], string> = { TECH_INTEREST: '관심 기술', PROJECT_IMPACT: '프로젝트 영향', ALL_NEW: '전체 신규 취약점' };
 
 type RuleRow = Prisma.SubscriptionRuleGetPayload<{ include: { channels: { include: { channel: { select: { id: true; status: true; name: true } } } } } }>;
 const include = { channels: { include: { channel: { select: { id: true, status: true, name: true } } } } } as const;
@@ -97,13 +100,17 @@ export class RuleService {
     if (dto.digestFormat === 'BRIEFING' && schedule.type === 'IMMEDIATE') {
       throw new BadRequestException('보안 브리핑은 받는 시간을 정해 모아 받을 때만 쓸 수 있습니다.');
     }
-    const allowed: readonly string[] = dto.kind === 'TECH_INTEREST' ? TECH_EVENT_TYPES : PROJECT_EVENT_TYPES;
+    if (dto.kind === 'ALL_NEW') {
+      // 하루 수백 건이 공개되므로 받는 시각에 모아 브리핑으로만 보낸다.
+      if (schedule.type === 'IMMEDIATE' || dto.digestFormat !== 'BRIEFING') throw new BadRequestException('전체 신규 취약점은 받는 시간을 정해 보안 브리핑으로만 받을 수 있습니다.');
+      if (!dto.minSeverity) throw new BadRequestException('전체 신규 취약점은 심각도 기준을 골라야 합니다.');
+      template = null;
+    }
+    const allowed = KIND_EVENT_TYPES[dto.kind];
     const eventTypes = [...new Set(dto.eventTypes)];
     const invalid = eventTypes.filter((type) => !allowed.includes(type));
     if (invalid.length > 0) {
-      throw new BadRequestException(
-        `${dto.kind === 'TECH_INTEREST' ? '관심 기술' : '프로젝트 영향'} 규칙에서 쓸 수 없는 이벤트입니다: ${invalid.join(', ')}`,
-      );
+      throw new BadRequestException(`${KIND_LABEL[dto.kind]} 규칙에서 쓸 수 없는 이벤트입니다: ${invalid.join(', ')}`);
     }
     const channelIds = [...new Set(dto.channelIds)];
     const channels = await this.prisma.notificationChannel.count({ where: { userId, id: { in: channelIds } } });

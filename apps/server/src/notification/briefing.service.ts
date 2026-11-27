@@ -34,6 +34,8 @@ export interface BriefingContent {
   affectedProjects: number;
   patches: { confirmed: number; confirmedByProject: ProjectCount[]; reported: number; reportedByProject: ProjectCount[] };
   notices: Array<{ title: string; url: string }>;
+  /** 이 브리핑에 넣은 취약점 (전체 신규 취약점 브리핑이 같은 항목을 다시 넣지 않게) */
+  vulnerabilityIds?: string[];
 }
 
 const MAX_ITEMS = 50;
@@ -44,6 +46,13 @@ const SEVERITY_TONE: Record<string, Tone> = { CRITICAL: 'urgent', HIGH: 'high', 
 const IDENTIFIER_ORDER: Record<string, number> = { CVE: 0, GHSA: 1, OSV: 2 };
 const OPEN_STATUSES = ['UNREVIEWED', 'IN_REVIEW', 'PLANNED'];
 const DAY_MS = 86_400_000;
+/** 전체 신규 취약점: 처음 수집된 뒤 이 기간 안에 기준을 넘으면 넣는다 (심각도가 늦게 매겨지는 공지를 위해). */
+const NEW_LOOKBACK_MS = 3 * DAY_MS;
+/** 오래전에 공개된 공지를 새로 수집한 것은 신규로 보지 않는다. */
+const NEW_PUBLISHED_MS = 30 * DAY_MS;
+const SEVERITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+
+type NewRule = { id: string; createdAt: Date; eventTypes: Prisma.JsonValue; minSeverity: string | null };
 
 const truncate = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
@@ -151,8 +160,29 @@ export class BriefingService {
     }
   }
 
+  /**
+   * 전체 신규 취약점 브리핑에 넣을 취약점: 기준 심각도 이상으로 새로 들어온 공지와 KEV 에 새로 오른 공지 중
+   * 이 규칙의 지난 브리핑에 아직 넣지 않은 것. 심각도 미제공은 점수가 매겨진 뒤의 브리핑에 넣는다.
+   */
+  private async newVulnerabilityIds(rule: NewRule, slotAt: Date): Promise<string[]> {
+    const since = new Date(Math.max(rule.createdAt.getTime(), slotAt.getTime() - NEW_LOOKBACK_MS));
+    const types = Array.isArray(rule.eventTypes) ? (rule.eventTypes as string[]) : [];
+    const severities = SEVERITY_ORDER.slice(0, SEVERITY_ORDER.indexOf((rule.minSeverity ?? 'CRITICAL') as (typeof SEVERITY_ORDER)[number]) + 1);
+    const conditions: Prisma.VulnerabilityWhereInput[] = [
+      ...(types.includes('TECH_NEW_VULN') ? [{ createdAt: { gt: since, lte: slotAt }, publishedAt: { gt: new Date(slotAt.getTime() - NEW_PUBLISHED_MS) }, severity: { in: [...severities] } }] : []),
+      ...(types.includes('KEV_ADDED') ? [{ kevAddedAt: { gt: since, lte: slotAt } }] : []),
+    ];
+    if (conditions.length === 0) return [];
+    const [rows, earlier] = await Promise.all([
+      this.prisma.vulnerability.findMany({ where: { withdrawnAt: null, OR: conditions }, select: { id: true } }),
+      this.prisma.briefing.findMany({ where: { ruleId: rule.id, status: 'READY', slotAt: { gt: since, lt: slotAt } }, select: { content: true } }),
+    ]);
+    const covered = new Set(earlier.flatMap((row) => ((row.content ?? {}) as unknown as Partial<BriefingContent>).vulnerabilityIds ?? []));
+    return rows.map((row) => row.id).filter((id) => !covered.has(id));
+  }
+
   /** 모인 알림과 현재 상태로 브리핑 내용을 만든다 (정해진 틀). */
-  private async compose(briefingId: number, rule: { userId: string; kind: string; projectIds: Prisma.JsonValue }, from: Date, slotAt: Date, timeZone: string) {
+  private async compose(briefingId: number, rule: NewRule & { userId: string; kind: string; projectIds: Prisma.JsonValue }, from: Date, slotAt: Date, timeZone: string) {
     const scoped = Array.isArray(rule.projectIds) ? (rule.projectIds as string[]) : [];
     const projectWhere: Prisma.ProjectWhereInput = { userId: rule.userId, ...(rule.kind === 'PROJECT_IMPACT' && scoped.length > 0 ? { id: { in: scoped } } : {}) };
 
@@ -160,11 +190,15 @@ export class BriefingService {
       where: { briefingId, kind: 'EVENT' },
       select: { title: true, event: { select: { vulnerabilityId: true } } },
     });
-    const vulnerabilityIds = [...new Set(collected.map((row) => row.event?.vulnerabilityId).filter((id): id is string => !!id))];
+    const vulnerabilityIds =
+      rule.kind === 'ALL_NEW'
+        ? await this.newVulnerabilityIds(rule, slotAt)
+        : [...new Set(collected.map((row) => row.event?.vulnerabilityId).filter((id): id is string => !!id))];
     const otherTitles = [...new Set(collected.filter((row) => !row.event?.vulnerabilityId).map((row) => row.title))];
     const [vulnerabilities, findings, patched, reported, notices] = await Promise.all([
       this.prisma.vulnerability.findMany({
         where: { id: { in: vulnerabilityIds }, withdrawnAt: null },
+        orderBy: { cvssScore: 'desc' },
         select: {
           id: true,
           title: true,
@@ -260,6 +294,7 @@ export class BriefingService {
       affectedProjects,
       patches: { confirmed: patched.length, confirmedByProject: byProject(patched), reported: reported.length, reportedByProject: byProject(reported) },
       notices,
+      vulnerabilityIds: ranked.map((row) => row.vulnerability.id),
     };
     const aiInput: BriefingAiInput = {
       title,

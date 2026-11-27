@@ -712,6 +712,8 @@ enum RuleKind {
   TECH_INTEREST
   /// 프로젝트 영향 기준 알림
   PROJECT_IMPACT
+  /// 기술과 상관없이 새로 공개된 취약점 전체 (보안 브리핑으로만 받는다)
+  ALL_NEW
 }
 
 model SubscriptionRule {

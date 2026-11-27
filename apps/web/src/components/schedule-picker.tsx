@@ -75,14 +75,14 @@ function TimeList({ label, times, onChange, allowEmpty = false, emptyText }: { l
 }
 
 /** 규칙별 받는 시간 선택. 시각은 사용자 시간대(시간대·방해 금지 탭) 기준이다. */
-export function SchedulePicker({ value, onChange, idPrefix = 'sch' }: { value: ScheduleValue; onChange: (value: ScheduleValue) => void; idPrefix?: string }) {
+export function SchedulePicker({ value, onChange, idPrefix = 'sch', allowImmediate = true }: { value: ScheduleValue; onChange: (value: ScheduleValue) => void; idPrefix?: string; allowImmediate?: boolean }) {
   const times = value.times ?? [];
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor={`${idPrefix}-type`}>받는 시간</Label>
         <NativeSelect id={`${idPrefix}-type`} value={value.type} onChange={(e) => onChange(defaults(e.target.value as ScheduleValue['type']))}>
-          <option value="IMMEDIATE">즉시 - 생길 때마다 바로</option>
+          {allowImmediate ? <option value="IMMEDIATE">즉시 - 생길 때마다 바로</option> : null}
           <option value="DAILY">매일 - 정한 시각에 모아서</option>
           <option value="WEEKLY">매주 - 정한 요일·시각에 모아서</option>
           <option value="INTERVAL">N시간마다 - 모아서</option>

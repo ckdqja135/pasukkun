@@ -294,9 +294,10 @@ If the connect buttons are disabled, the bot is not set up on this server yet. C
 
 ### 구독 규칙 (Subscription rules) tab: what, when, and in what words
 
-There are two kinds of rules:
+There are three kinds of rules:
 - **관심 기술 알림** (Technology interest): advisories matching your saved technologies. Related, not necessarily affecting your projects.
 - **프로젝트 영향 알림** (Project impact): when an installed version in your project falls inside an affected range. On a project's first scan, you get one summary instead of one message per existing item. Malicious packages found in that scan are named in the summary.
+- **전체 신규 취약점 브리핑** (All new vulnerabilities): every newly published advisory at or above the severity you choose, whatever product it is for, such as routers or WordPress plugins. It comes only as a security briefing at the times you set, most severe first, and each line says whether any of your projects is affected. You can also include advisories newly added to KEV, whatever their severity. Advisories without a severity yet go into a later briefing once they get one. An advisory is never repeated in a later briefing of the same rule.
 
 Click **규칙 추가** (Add rule) and set:
 
