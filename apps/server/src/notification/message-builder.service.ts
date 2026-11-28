@@ -328,7 +328,7 @@ export class MessageBuilder {
       fields: [
         ...(lines.length > 0 ? [{ label: '새 이슈', value: `${lines.join('\n')}${rest > 0 ? `\n외 ${rest}건은 브리핑 전문에서 볼 수 있습니다` : ''}` }] : []),
         { label: '패치 확인 (지난 브리핑 이후 점검)', value: patchLines.join('\n') },
-        ...((content.notices ?? []).length > 0 ? [{ label: '국내 보안공지 (KISA)', value: (content.notices ?? []).map((notice) => `- ${notice.title}`).join('\n') }] : []),
+        ...((content.notices ?? []).length > 0 ? [{ label: '보안공지 (KISA, AWS)', value: (content.notices ?? []).map((notice) => `- [${notice.source ?? 'KISA'}] ${notice.title}`).join('\n') }] : []),
       ],
       links: [
         { label: '브리핑 전문 보기', url: `${this.env.appOrigin}/briefings?id=${briefing.id}` },

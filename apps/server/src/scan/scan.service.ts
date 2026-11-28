@@ -166,7 +166,7 @@ export class ScanService {
       });
 
       const freshness = Object.fromEntries(
-        (await this.ingestion.status()).filter((source) => source.key !== 'KISA').map((source) => [
+        (await this.ingestion.status()).filter((source) => source.key !== 'KISA' && source.key !== 'AWS').map((source) => [
           source.key,
           { status: source.status, lastSuccessAt: source.lastSuccessAt?.toISOString() ?? null, lagging: source.lagging },
         ]),

@@ -224,6 +224,7 @@ enum SourceKey {
   KEV
   EPSS
   KISA
+  AWS
 }
 
 /// 국내 공공 보안공지 (KISA 보호나라). 영향 버전 정보가 없으므로 버전 매칭에 쓰지 않고 목록·달력에만 보여준다.

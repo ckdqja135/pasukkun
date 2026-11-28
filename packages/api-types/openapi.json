@@ -2266,7 +2266,7 @@
             }
           }
         },
-        "summary": "국내 공공 보안공지 (KISA 보호나라) 최근 목록",
+        "summary": "보안공지 (KISA 보호나라, AWS) 출처별 최근 목록",
         "tags": [
           "insight"
         ]
@@ -5359,6 +5359,10 @@
       "BriefingNoticeDto": {
         "type": "object",
         "properties": {
+          "source": {
+            "type": "string",
+            "description": "KISA | AWS"
+          },
           "title": {
             "type": "string"
           },
@@ -5367,6 +5371,7 @@
           }
         },
         "required": [
+          "source",
           "title",
           "url"
         ]
@@ -6141,7 +6146,8 @@
             "type": "string"
           },
           "source": {
-            "type": "string"
+            "type": "string",
+            "description": "KISA | AWS"
           },
           "title": {
             "type": "string"

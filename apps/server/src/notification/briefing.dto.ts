@@ -44,6 +44,8 @@ export class BriefingPatchesDto {
 }
 
 export class BriefingNoticeDto {
+  /** KISA | AWS */
+  source: string;
   title: string;
   url: string;
 }

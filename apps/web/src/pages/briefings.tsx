@@ -89,12 +89,12 @@ function BriefingBlock({ briefing, selected }: { briefing: Briefing; selected: b
         </div>
         {briefing.notices.length > 0 ? (
           <div className="text-sm">
-            <p className="font-medium">국내 보안공지 (KISA)</p>
+            <p className="font-medium">보안공지 (KISA, AWS)</p>
             <ul>
               {briefing.notices.map((notice, index) => (
                 <li key={index}>
                   <a href={notice.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline">
-                    {notice.title} <ExternalLink aria-hidden className="size-3" />
+                    [{notice.source}] {notice.title} <ExternalLink aria-hidden className="size-3" />
                   </a>
                 </li>
               ))}

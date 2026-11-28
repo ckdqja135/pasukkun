@@ -69,6 +69,7 @@ const schema = z.object({
   INGEST_KEV_MINUTES: int(360, 30),
   INGEST_EPSS_MINUTES: int(1440, 360),
   INGEST_KISA_MINUTES: int(60, 30),
+  INGEST_AWS_MINUTES: int(60, 30),
   RESCAN_MINUTES: int(1440, 60),
   EPSS_THRESHOLD: z
     .string()
@@ -105,7 +106,7 @@ export interface AppEnv {
   githubToken?: string;
   nvdApiKey?: string;
   initialFeedDays: number;
-  intervals: { GHSA: number; NVD: number; KEV: number; EPSS: number; KISA: number; OSV: number };
+  intervals: { GHSA: number; NVD: number; KEV: number; EPSS: number; KISA: number; AWS: number; OSV: number };
   rescanMinutes: number;
   epssThreshold: number;
   uploadMaxBytes: number;
@@ -168,6 +169,7 @@ export function loadEnv(): AppEnv {
       KEV: parsed.INGEST_KEV_MINUTES,
       EPSS: parsed.INGEST_EPSS_MINUTES,
       KISA: parsed.INGEST_KISA_MINUTES,
+      AWS: parsed.INGEST_AWS_MINUTES,
       OSV: parsed.RESCAN_MINUTES,
     },
     rescanMinutes: parsed.RESCAN_MINUTES,

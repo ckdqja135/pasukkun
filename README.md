@@ -25,7 +25,7 @@ This guide explains how to use each menu. The app's screens are in Korean, so on
 
 | Menu | What it does |
 |-|-|
-| 대시보드 (Dashboard) | Items to look at now, recent advisories, Korean public notices, and data collection status at a glance |
+| 대시보드 (Dashboard) | Items to look at now, recent advisories, security notices, and data collection status at a glance |
 | 비상 달력 (Emergency calendar) | Publication dates, KEV deadlines, review dates, and planned fix dates on a monthly calendar |
 | 취약점 피드 (Vulnerability feed) | Search and filter all collected vulnerabilities |
 | 프로젝트 (Projects) | Import or register projects and scan their dependencies |
@@ -58,7 +58,7 @@ At the bottom of the menu you can see your GitHub username, switch **다크/라�
 - **긴급 검토 항목** (Urgent items): what to look at first.
 - **최근 공개된 취약점** (Recently published): recent advisories matching your saved technologies. This means the advisory is related, not that your project is affected. If the list is empty, check how your technology groups are combined (see [Technologies of interest](#관심-기술-technologies-of-interest)).
 - **내 프로젝트** (My projects): latest scan status and urgent/open counts per project.
-- **국내 보안공지** (Korean security notices): the latest KISA 보호나라 security notices. They have no affected version data, so they are not matched against your projects; open them and check yourself.
+- **보안공지** (Security notices): the latest KISA 보호나라 notices and AWS security bulletins, listed by source. They have no affected version data, so they are not matched against your projects; open them and check yourself.
 - **데이터 수집 상태** (Data collection status): each source shows normal / collecting / delayed / failed.
 
 ## 비상 달력 (Emergency calendar)
@@ -68,9 +68,9 @@ A monthly view of what was published and what is due.
 - Move between months with the arrows, or jump back with **오늘** (Today).
 - Choose a view at the top right:
   - **내 프로젝트 영향** (My project impact): vulnerabilities affecting your projects on their publication date, CISA KEV action deadlines for them, risk acceptance review dates, and planned fix dates.
-  - **중요 이슈** (Important issues): vulnerabilities newly added to CISA KEV (confirmed exploited), critical advisories for your saved technologies, all KEV deadlines, and KISA security notices.
+  - **중요 이슈** (Important issues): vulnerabilities newly added to CISA KEV (confirmed exploited), critical advisories for your saved technologies, all KEV deadlines, and security notices from KISA and AWS.
   - **관심 기술** (Technologies of interest): advisories matching your saved technologies.
-- Colors: 긴급 (urgent), 높음 (high), 보통 (medium), KEV 조치 기한 (KEV deadline, black), 조치 예정 (planned fix, blue), 재검토 기한 (review date, purple), 국내 보안공지 (Korean notice, gray). The legend under the toolbar shows the colors used in the current view.
+- Colors: 긴급 (urgent), 높음 (high), 보통 (medium), KEV 조치 기한 (KEV deadline, black), 조치 예정 (planned fix, blue), 재검토 기한 (review date, purple), 보안공지 (KISA and AWS notices, gray). The legend under the toolbar shows the colors used in the current view.
 - Click an item to open it. When a day has more than three items, click **+N건** to see them all.
 - To put a fix on the calendar, set a **조치 예정일** (planned fix date) when you change a finding's status to 조치 예정 (planned).
 
@@ -253,6 +253,7 @@ Affected findings grouped by package and installed version, so you can start wit
 - Labels next to technologies:
   - **정밀 검사** (Precise scan): installed versions can be compared once a project is imported.
   - **피드만** (Feed only): related advisories are shown, but versions are not compared.
+- AWS is in the infrastructure group. It covers advisories for AWS products and AWS SDK packages. Some new AWS advisories arrive without product details and are not grouped under AWS until those details are published, so also check the AWS security bulletins on the dashboard.
 - Technologies decide which advisories are related. They do not decide whether a project is affected.
 
 ## 알림 설정 (Notification settings)
@@ -334,7 +335,7 @@ A security briefing is titled by when it is sent: 아침 보안 브리핑(밤사
 - A one-line headline and a short summary: how many new issues came in since the last briefing, whether any are in KEV, how many of your projects are affected, and how many patches were confirmed.
 - **새 이슈** (New issues): each issue with its priority, KEV status, affected projects, and whether action is needed (조치 필요) or it is for reference only (참고).
 - **패치 확인** (Patch check): items that the latest scans no longer find because the installed version changed, and items you marked 조치 완료 (Done) that will be confirmed at the next check (조치 보고).
-- **국내 보안공지** (KISA notices): KISA notices collected since the last briefing.
+- **보안공지** (Security notices): KISA notices and AWS security bulletins collected since the last briefing, each marked with its source.
 
 For a GitHub project, pasukkun rechecks the lockfile on its own, so an item marked 조치 완료 moves to the confirmed patches after you push the upgrade.
 
@@ -402,7 +403,7 @@ Under **지난 브리핑** (Past briefings), each briefing shows:
 - Its title, the time it was sent, and the time it collected from. **AI 요약** marks briefings written with AI summary.
 - The rule name and each channel it went to, with whether it was sent (보냄) or failed (보내지 못함).
 - The headline, the summary, and the numbered issue list. Click an issue to open its finding or vulnerability details.
-- **패치 확인** (Patch check) and **국내 보안공지** (KISA notices).
+- **패치 확인** (Patch check) and **보안공지** (KISA and AWS notices).
 
 Click a briefing's title to get a link to that briefing alone. Opening that link scrolls to it and highlights it. **더 보기** (More) loads older briefings. Briefings are kept for 180 days.
 
@@ -438,6 +439,7 @@ Rarely, the same notification may arrive twice.
 | CISA KEV | Vulnerabilities confirmed to be exploited |
 | FIRST EPSS | Estimated probability of exploitation activity in the next 30 days |
 | KISA 보호나라 | Korean public security notices (shown as related notices only, not matched by version) |
+| AWS | AWS security bulletins for AWS services and tools (shown as related notices only, not matched by version) |
 
 ## Good to know
 

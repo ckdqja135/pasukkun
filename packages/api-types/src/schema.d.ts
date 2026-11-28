@@ -837,7 +837,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 국내 공공 보안공지 (KISA 보호나라) 최근 목록 */
+        /** 보안공지 (KISA 보호나라, AWS) 출처별 최근 목록 */
         get: operations["InsightController_notices"];
         put?: never;
         post?: never;
@@ -1712,6 +1712,8 @@ export interface components {
             reportedByProject: components["schemas"]["ProjectCountDto"][];
         };
         BriefingNoticeDto: {
+            /** @description KISA | AWS */
+            source: string;
             title: string;
             url: string;
         };
@@ -1911,6 +1913,7 @@ export interface components {
         };
         PublicNoticeDto: {
             id: string;
+            /** @description KISA | AWS */
             source: string;
             title: string;
             url: string;

@@ -191,27 +191,41 @@ export function DashboardPage() {
   );
 }
 
-/** 국내 공공 보안공지 (KISA 보호나라). 영향 버전 정보가 없어 프로젝트와 대조하지 않는다. */
+/** 보안공지 (KISA 보호나라, AWS). 영향 버전 정보가 없어 프로젝트와 대조하지 않는다. */
+const NOTICE_SOURCES = [
+  { key: 'KISA', label: 'KISA 보호나라' },
+  { key: 'AWS', label: 'AWS' },
+];
+
 function PublicNotices() {
   const notices = useQuery({ queryKey: ['notices'], queryFn: () => unwrap(api.GET('/api/v1/notices')) });
   if (!notices.data || notices.data.length === 0) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>국내 보안공지</CardTitle>
-        <CardDescription>KISA 보호나라 보안공지입니다. 영향 버전 정보가 없어 프로젝트와 자동으로 대조하지 않으니 직접 확인해 주세요.</CardDescription>
+        <CardTitle>보안공지</CardTitle>
+        <CardDescription>KISA 보호나라와 AWS 의 보안 공지입니다. 영향 버전 정보가 없어 프로젝트와 자동으로 대조하지 않으니 직접 확인해 주세요.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ul className="divide-y">
-          {notices.data.slice(0, 5).map((notice) => (
-            <li key={notice.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-              <a href={notice.url} target="_blank" rel="noreferrer noopener" className="min-w-0 flex-1 truncate text-sm font-medium underline-offset-2 hover:underline">
-                {notice.title}
-              </a>
-              <span className="text-xs text-muted-foreground tabular-nums">{notice.publishedDate}</span>
-            </li>
-          ))}
-        </ul>
+      <CardContent className="space-y-4">
+        {NOTICE_SOURCES.map(({ key, label }) => {
+          const rows = notices.data.filter((notice) => notice.source === key).slice(0, 5);
+          if (rows.length === 0) return null;
+          return (
+            <section key={key}>
+              <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
+              <ul className="divide-y">
+                {rows.map((notice) => (
+                  <li key={notice.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                    <a href={notice.url} target="_blank" rel="noreferrer noopener" className="min-w-0 flex-1 truncate text-sm font-medium underline-offset-2 hover:underline">
+                      {notice.title}
+                    </a>
+                    <span className="text-xs text-muted-foreground tabular-nums">{notice.publishedDate}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </CardContent>
     </Card>
   );

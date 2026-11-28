@@ -117,9 +117,13 @@ export class InsightService {
     return { items, truncated };
   }
 
+  /** 출처(KISA, AWS)마다 최근 limit 건. 공지가 잦은 출처가 다른 출처를 밀어내지 않게 따로 가져온다. */
   async notices(limit: number): Promise<PublicNoticeDto[]> {
-    const rows = await this.prisma.publicNotice.findMany({ orderBy: [{ publishedAt: 'desc' }, { firstSeenAt: 'desc' }], take: Math.min(Math.max(limit, 1), 50) });
-    // 게시 날짜는 한국 날짜로 기록된 값이다. 브라우저 시간대와 무관하게 같은 날짜를 보여준다.
+    const take = Math.min(Math.max(limit, 1), 50);
+    const rows = (
+      await Promise.all((['KISA', 'AWS'] as const).map((source) => this.prisma.publicNotice.findMany({ where: { source }, orderBy: [{ publishedAt: 'desc' }, { firstSeenAt: 'desc' }], take })))
+    ).flat();
+    // 게시 날짜는 한국 날짜로 보여준다. 브라우저 시간대와 무관하게 같은 날짜가 나온다.
     return rows.map((row) => ({ id: row.id, source: row.source, title: row.title, url: row.url, publishedAt: row.publishedAt.toISOString(), publishedDate: localDate(row.publishedAt, 'Asia/Seoul') }));
   }
 
@@ -234,7 +238,9 @@ export class InsightService {
         }
         const notices = cap(await this.prisma.publicNotice.findMany({ where: { publishedAt: window }, orderBy: { publishedAt: 'desc' }, take: MAX_NOTICES + 1 }), MAX_NOTICES);
         for (const notice of notices) {
-          events.push({ id: `notice:${notice.id}`, date: localDate(notice.publishedAt, 'Asia/Seoul'), kind: 'NOTICE', tone: 'NOTICE', title: notice.title, detail: 'KISA 보호나라 보안공지', href: notice.url, external: true });
+          // KISA 는 게시 날짜(한국 날짜)만 있고, AWS 는 게시 시각이 있어 사용자 시간대로 본다.
+          const kisa = notice.source === 'KISA';
+          events.push({ id: `notice:${notice.id}`, date: localDate(notice.publishedAt, kisa ? 'Asia/Seoul' : timeZone), kind: 'NOTICE', tone: 'NOTICE', title: notice.title, detail: kisa ? 'KISA 보호나라 보안공지' : 'AWS 보안 공지', href: notice.url, external: true });
         }
       }
     }

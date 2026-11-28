@@ -33,7 +33,8 @@ export interface BriefingContent {
   kevCount: number;
   affectedProjects: number;
   patches: { confirmed: number; confirmedByProject: ProjectCount[]; reported: number; reportedByProject: ProjectCount[] };
-  notices: Array<{ title: string; url: string }>;
+  /** source 는 KISA | AWS. 예전에 저장된 브리핑에는 없고, 그때는 KISA 뿐이었다. */
+  notices: Array<{ source?: string; title: string; url: string }>;
   /** 이 브리핑에 넣은 취약점 (전체 신규 취약점 브리핑이 같은 항목을 다시 넣지 않게) */
   vulnerabilityIds?: string[];
 }
@@ -221,7 +222,11 @@ export class BriefingService {
         where: { remediationStatus: 'DONE', resolvedAt: null, versionMatch: 'AFFECTED', project: projectWhere },
         select: { project: { select: { name: true } } },
       }),
-      this.prisma.publicNotice.findMany({ where: { firstSeenAt: { gt: from, lte: slotAt } }, orderBy: { publishedAt: 'desc' }, take: 5, select: { title: true, url: true } }),
+      Promise.all(
+        (['KISA', 'AWS'] as const).map((source) =>
+          this.prisma.publicNotice.findMany({ where: { source, firstSeenAt: { gt: from, lte: slotAt } }, orderBy: { publishedAt: 'desc' }, take: 5, select: { source: true, title: true, url: true } }),
+        ),
+      ).then((lists) => lists.flat()),
     ]);
 
     const ranked = vulnerabilities
@@ -403,7 +408,7 @@ export class BriefingService {
       items: (content.items ?? []).map((item) => ({ tag: item.tag, tone: item.tone, text: item.text, href: item.href, kev: item.kev, affected: item.affected })),
       totalItems: content.totalItems ?? 0,
       patches: content.patches ?? { confirmed: 0, confirmedByProject: [], reported: 0, reportedByProject: [] },
-      notices: content.notices ?? [],
+      notices: (content.notices ?? []).map((notice) => ({ source: notice.source ?? 'KISA', title: notice.title, url: notice.url })),
       channels: row.deliveries.map((delivery) => ({ name: delivery.channel.name, type: delivery.channel.type, status: delivery.status })),
     };
   }

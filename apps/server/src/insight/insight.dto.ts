@@ -84,6 +84,7 @@ export class CalendarDto {
 
 export class PublicNoticeDto {
   id: string;
+  /** KISA | AWS */
   source: string;
   title: string;
   url: string;

@@ -20,6 +20,7 @@ const SOURCE_ROLES: Record<string, string> = {
   KEV: 'CISA KEV - 실제 악용이 확인된 취약점 여부',
   EPSS: 'FIRST EPSS - 30일 내 악용 활동 관측 확률 추정',
   KISA: 'KISA 보호나라 보안공지 - 국내 공공 보안 권고 (관련 공지로만 표시)',
+  AWS: 'AWS 보안 공지 - AWS 서비스와 도구의 공식 보안 공지 (관련 공지로만 표시)',
 };
 
 const OPEN_STATUSES = ['UNREVIEWED', 'IN_REVIEW', 'PLANNED'] as const;
@@ -47,15 +48,16 @@ export class StatusService {
       ),
     );
     const recent = new Map(lastRuns.filter((run) => run !== null).map((run) => [run.source as string, run.changed]));
-    const [ghsa, nvd, osv, kev, epss, kisa] = await Promise.all([
+    const [ghsa, nvd, osv, kev, epss, kisa, aws] = await Promise.all([
       this.prisma.sourceRecord.count({ where: { source: 'GHSA' } }),
       this.prisma.sourceRecord.count({ where: { source: 'NVD' } }),
       this.prisma.sourceRecord.count({ where: { source: 'OSV' } }),
       this.prisma.kevEntry.count(),
       this.prisma.vulnerability.count({ where: { epssScore: { not: null } } }),
       this.prisma.publicNotice.count({ where: { source: 'KISA' } }),
+      this.prisma.publicNotice.count({ where: { source: 'AWS' } }),
     ]);
-    const totals: Record<string, number> = { GHSA: ghsa, NVD: nvd, OSV: osv, KEV: kev, EPSS: epss, KISA: kisa };
+    const totals: Record<string, number> = { GHSA: ghsa, NVD: nvd, OSV: osv, KEV: kev, EPSS: epss, KISA: kisa, AWS: aws };
     return views.map((source) => ({
       ...source,
       running: running.has(source.key),

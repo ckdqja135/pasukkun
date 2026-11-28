@@ -26,7 +26,7 @@ const TONE: Record<CalendarEvent['tone'], { label: string; chip: string; dot: st
   KEV: { label: 'KEV 조치 기한', chip: 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900', dot: 'bg-zinc-900 dark:bg-zinc-100' },
   PLAN: { label: '조치 예정', chip: 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200', dot: 'bg-blue-200' },
   REVIEW: { label: '재검토 기한', chip: 'bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200', dot: 'bg-violet-200' },
-  NOTICE: { label: '국내 보안공지', chip: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200', dot: 'bg-slate-300' },
+  NOTICE: { label: '보안공지 (KISA, AWS)', chip: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200', dot: 'bg-slate-300' },
 };
 
 const LEGEND: Record<View, Array<CalendarEvent['tone']>> = {

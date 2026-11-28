@@ -22,7 +22,7 @@ export class InsightController {
     return this.insight.calendar(user.id, query);
   }
 
-  /** 국내 공공 보안공지 (KISA 보호나라) 최근 목록 */
+  /** 보안공지 (KISA 보호나라, AWS) 출처별 최근 목록 */
   @Get('notices')
   notices(): Promise<PublicNoticeDto[]> {
     return this.insight.notices(10);

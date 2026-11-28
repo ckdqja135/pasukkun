@@ -3,7 +3,7 @@ import type { AppEnv } from '../config/env.js';
 import type { NormalizedAdvisory } from './normalized.js';
 import type { UpsertResult } from './upsert.service.js';
 
-export type ScheduledSource = 'GHSA' | 'NVD' | 'KEV' | 'EPSS' | 'KISA';
+export type ScheduledSource = 'GHSA' | 'NVD' | 'KEV' | 'EPSS' | 'KISA' | 'AWS';
 
 /** 수집 1회 실행 동안 어댑터가 쓰는 도구 모음 */
 export interface IngestContext {

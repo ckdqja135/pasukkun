@@ -7,6 +7,7 @@ import { JobService } from '../jobs/job.service.js';
 import { EpssAdapter } from './adapters/epss.adapter.js';
 import { GhsaAdapter } from './adapters/ghsa.adapter.js';
 import { KevAdapter } from './adapters/kev.adapter.js';
+import { AwsAdapter } from './adapters/aws.adapter.js';
 import { KisaAdapter } from './adapters/kisa.adapter.js';
 import { NvdAdapter } from './adapters/nvd.adapter.js';
 import type { IngestContext, ScheduledSource, SourceAdapter } from './context.js';
@@ -45,6 +46,7 @@ export class IngestionService {
     kev: KevAdapter,
     epss: EpssAdapter,
     kisa: KisaAdapter,
+    aws: AwsAdapter,
   ) {
     this.adapters = new Map<ScheduledSource, SourceAdapter>([
       ['GHSA', ghsa],
@@ -52,12 +54,13 @@ export class IngestionService {
       ['KEV', kev],
       ['EPSS', epss],
       ['KISA', kisa],
+      ['AWS', aws],
     ]);
   }
 
   /** 소스 상태 행을 만들고 설정된 주기를 반영한다. */
   async ensureSources(): Promise<void> {
-    for (const key of ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA', 'OSV'] as const) {
+    for (const key of ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA', 'AWS', 'OSV'] as const) {
       const intervalMinutes = this.env.intervals[key];
       await this.prisma.ingestionSource.upsert({
         where: { key },
@@ -71,10 +74,10 @@ export class IngestionService {
   /** 실행 시점이 된 정기 수집 소스를 작업 큐에 넣는다. */
   async enqueueDue(now = new Date()): Promise<string[]> {
     if (this.env.disableIngestion) return [];
-    const sources = await this.prisma.ingestionSource.findMany({ where: { enabled: true, key: { in: ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA'] } } });
+    const sources = await this.prisma.ingestionSource.findMany({ where: { enabled: true, key: { in: ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA', 'AWS'] } } });
     const queued: string[] = [];
     // 공지를 먼저 받고 보강 데이터(KEV, EPSS)를 나중에 받는다.
-    const order = ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA'];
+    const order = ['GHSA', 'NVD', 'KEV', 'EPSS', 'KISA', 'AWS'];
     sources.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     for (const source of sources) {
       const waitMinutes = source.status === 'FAILING' ? Math.min(source.intervalMinutes, FAILURE_RETRY_MINUTES) : source.intervalMinutes;

@@ -121,8 +121,8 @@ export function FeedPage() {
   const techById = new Map((technologies.data ?? []).map((t) => [t.id, t]));
   const saved = interests.data?.technologyIds ?? [];
   const differsFromSaved = techInitialized && !sameSet(tech, saved);
-  // OSV(검사 때 조회)와 KISA(국내 공지, 피드 목록에 쓰지 않음)는 피드 완전성과 무관하다.
-  const feedSources = (ingestion.data?.sources ?? []).filter((s) => s.key !== 'OSV' && s.key !== 'KISA');
+  // OSV(검사 때 조회)와 KISA·AWS(보안공지, 피드 목록에 쓰지 않음)는 피드 완전성과 무관하다.
+  const feedSources = (ingestion.data?.sources ?? []).filter((s) => s.key !== 'OSV' && s.key !== 'KISA' && s.key !== 'AWS');
   const initializing = feedSources.filter((s) => s.status === 'NEVER_RUN');
   const lagging = feedSources.filter((s) => s.status !== 'NEVER_RUN' && (s.lagging || s.status === 'FAILING'));
 
